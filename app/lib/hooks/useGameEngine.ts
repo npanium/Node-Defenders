@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { GameEngine } from "../game/GameEngine";
-import { GameConfig, Tower, Position } from "../types/core";
+import { GameConfig, Position, Tower } from "../types/core";
 import { GameState } from "../types/gameState";
 
 const DEFAULT_CONFIG: GameConfig = {
@@ -10,27 +10,39 @@ const DEFAULT_CONFIG: GameConfig = {
   waveDuration: 60,
 };
 
+// Create a singleton instance of GameEngine
+let engineInstance: GameEngine | null = null;
+
 export function useGameEngine(config: Partial<GameConfig> = {}) {
-  const engineRef = useRef<GameEngine>();
   const [gameState, setGameState] = useState<GameState | null>(null);
 
   useEffect(() => {
-    // Initialize engine with merged config
-    const finalConfig = { ...DEFAULT_CONFIG, ...config };
-    engineRef.current = new GameEngine(finalConfig);
+    // Initialize engine if it doesn't exist
+    if (!engineInstance) {
+      const finalConfig = { ...DEFAULT_CONFIG, ...config };
+      engineInstance = new GameEngine(finalConfig);
+    }
+
+    // Set initial state
+    setGameState(engineInstance.getState());
 
     // Subscribe to state updates
-    const unsubscribe = engineRef.current.subscribe(setGameState);
-    return unsubscribe;
+    const cleanupFunction = engineInstance.subscribe((state) => {
+      setGameState(state);
+    });
+
+    return () => {
+      cleanupFunction();
+    };
   }, []);
 
   return {
     gameState,
-    engine: engineRef.current,
-    // Add convenience methods here
+    engine: engineInstance,
     placeTower: (type: Tower["type"], position: Position) =>
-      engineRef.current?.placeTower(type, position),
-    upgradeTower: (towerId: string) => engineRef.current?.upgradeTower(towerId),
-    harvestYield: (towerId: string) => engineRef.current?.harvestYield(towerId),
+      engineInstance?.placeTower(type, position),
+    upgradeTower: (towerId: string) => engineInstance?.upgradeTower(towerId),
+    harvestYield: (towerId: string) => engineInstance?.harvestYield(towerId),
+    startWave: () => engineInstance?.startWave(),
   };
 }
