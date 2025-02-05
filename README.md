@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Node Defenders
+
+A DeFi tower defense game built on Scroll blockchain where players deploy yield-generating towers to defend against waves of enemies.
+
+## Development Status
+
+Currently in Phase 1 of development:
+
+- Next.js frontend with DOM-based game renderer
+- Smart contract development
+- DeFi features integration
+
+Phase 2 will include Unity game integration.
+
+## Tech Stack
+
+- Frontend: Next.js 14, TypeScript, TailwindCSS, shadcn/ui
+- Blockchain: Scroll, Solidity
+- Future: Unity WebGL
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+app/
+  lib/
+    types/      # Core type definitions
+    game/       # Game engine and logic
+    hooks/      # Custom React hooks
+  components/
+    game/       # Game rendering components
+    dashboard/  # DeFi dashboard components
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## Game Mechanics
 
-## Learn More
+- Deploy different types of towers (Validator, LP, Lending, Yield)
+- Each tower generates yield based on its type and level
+- Defend against enemy waves while managing resources
+- Upgrade towers to increase effectiveness and yield
 
-To learn more about Next.js, take a look at the following resources:
+## Smart Contracts (WIP)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Tower NFTs
+- Yield generation
+- Upgrade system
+- Game state verification
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Contributing
 
-## Deploy on Vercel
+Currently in active development. Contributions will be welcome after initial alpha release.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Apache-2.0
