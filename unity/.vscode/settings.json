@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "node-defenders-unity.sln"
+    "dotnet.defaultSolution": "unity.sln"
 }
