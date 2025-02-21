@@ -25,8 +25,15 @@ public class Plot : MonoBehaviour {
     private void OnMouseDown() {
         if (node != null) return;
 
-        GameObject nodeToBuild = BuildManager.main.GetSelectedNode();
-        node = Instantiate(nodeToBuild, transform.position, Quaternion.identity);
+        NodeTower nodeToBuild = BuildManager.main.GetSelectedNode();
+
+        if (nodeToBuild.cost > LevelManager.main.currency) {
+            Debug.Log("Not enough monies!");
+            return;
+        }
+
+        LevelManager.main.SpendCurrency(nodeToBuild.cost);
+        node = Instantiate(nodeToBuild.prefab, transform.position, Quaternion.identity);
 
     }
 }
