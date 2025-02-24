@@ -7,7 +7,8 @@ public class Plot : MonoBehaviour {
     [SerializeField] private SpriteRenderer sr;
     [SerializeField] private Color hoverColor;
 
-    private GameObject node;
+    private GameObject nodeObj;
+    public Node node;
     private Color startColor;
 
     private void Start() {
@@ -23,7 +24,12 @@ public class Plot : MonoBehaviour {
     }
 
     private void OnMouseDown() {
-        if (node != null) return;
+        if (UIManager.main.IsHoveringUI()) return;
+
+        if (nodeObj != null) {
+            node.OpenUpgradeUI();
+            return;
+        };
 
         NodeTower nodeToBuild = BuildManager.main.GetSelectedNode();
 
@@ -33,7 +39,7 @@ public class Plot : MonoBehaviour {
         }
 
         LevelManager.main.SpendCurrency(nodeToBuild.cost);
-        node = Instantiate(nodeToBuild.prefab, transform.position, Quaternion.identity);
-
+        nodeObj = Instantiate(nodeToBuild.prefab, transform.position, Quaternion.identity);
+        node = nodeObj.GetComponent<Node>();
     }
 }

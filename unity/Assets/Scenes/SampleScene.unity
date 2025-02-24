@@ -728,7 +728,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Test Node
+  m_text: SlowMo Node
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: e10f9d5c3ccd841578c2b864174ee551, type: 2}
   m_sharedMaterial: {fileID: -4558260458948026621, guid: e10f9d5c3ccd841578c2b864174ee551, type: 2}
@@ -4204,7 +4204,7 @@ GameObject:
   - component: {fileID: 1062357521}
   - component: {fileID: 1062357520}
   m_Layer: 5
-  m_Name: Test Node
+  m_Name: Slowmo Node
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6061,6 +6061,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enemyPrefabs:
   - {fileID: 415079516217822824, guid: 4715de0cc54334a868487472c9be373a, type: 3}
+  - {fileID: 415079516217822824, guid: 4715de0cc54334a868487472c9be373a, type: 3}
+  - {fileID: 415079516217822824, guid: 3ceae471717534b868bffe1cf5812019, type: 3}
   baseEnemies: 5
   enemiesPerSecond: 2
   timeBetweenWaves: 2
@@ -6081,9 +6083,9 @@ MonoBehaviour:
   - name: Validator Node
     cost: 50
     prefab: {fileID: 6533463003749712655, guid: 38c80dc3e5fe84d72aeb76a8c26a4816, type: 3}
-  - name: Test Node
-    cost: 100
-    prefab: {fileID: 6533463003749712655, guid: b5df865c79c544eb4a4aeddb39c053b3, type: 3}
+  - name: Slowmo Node
+    cost: 200
+    prefab: {fileID: 7690083744413227105, guid: e4859ccb93cdb4175ba97cff05500b8d, type: 3}
 --- !u!1 &1574823926
 GameObject:
   m_ObjectHideFlags: 0
