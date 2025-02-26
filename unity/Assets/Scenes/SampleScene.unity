@@ -2574,7 +2574,7 @@ MonoBehaviour:
   m_Intensity: 1
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
-  m_ApplyToSortingLayers: 00000000c1801ec5
+  m_ApplyToSortingLayers: 00000000c1801ec5d3fb13ff
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
   m_LightOrder: 0
@@ -5999,6 +5999,7 @@ GameObject:
   - component: {fileID: 1547261203}
   - component: {fileID: 1547261205}
   - component: {fileID: 1547261206}
+  - component: {fileID: 1547261207}
   m_Layer: 0
   m_Name: LevelManager
   m_TagString: Untagged
@@ -6067,6 +6068,7 @@ MonoBehaviour:
   enemiesPerSecond: 2
   timeBetweenWaves: 2
   difficultyScalingFactor: 1
+  enemiesPerSecondCap: 15
 --- !u!114 &1547261206
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6086,6 +6088,18 @@ MonoBehaviour:
   - name: Slowmo Node
     cost: 200
     prefab: {fileID: 7690083744413227105, guid: e4859ccb93cdb4175ba97cff05500b8d, type: 3}
+--- !u!114 &1547261207
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1547261202}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 337a4c71ae0da49cf813b838aa479816, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1574823926
 GameObject:
   m_ObjectHideFlags: 0
