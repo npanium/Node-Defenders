@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Script from "next/script";
-import GameUI from "@/app/components/GameUI";
+import GameUI from "@/components/GameUI";
 
 export default function GamePage() {
   const params = useParams();

@@ -3,89 +3,70 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class LevelManager : MonoBehaviour {
+    // Singleton reference
     public static LevelManager main;
 
+    // Game properties
     public Transform startPoint;
     public Transform[] path;
-
     public int currency;
 
-    private WebSocketManager socketManager;
-    private bool isUpdatingFromServer = false;
+    private WsClient wsClient;
 
     private void Awake() {
         main = this;
     }
 
     private void Start() {
+        // Set initial currency
         currency = 100;
 
-        if (FindObjectOfType<MainThreadDispatcher>() == null) {
-            new GameObject("MainThreadDispatcher").AddComponent<MainThreadDispatcher>();
+        wsClient = FindObjectOfType<WsClient>();
+
+        if (wsClient != null) {
+            Debug.Log("Plot: WsClient reference obtained");
+        } else {
+            Debug.LogWarning("Plot: Failed to get WsClient reference");
         }
-
-        socketManager = WebSocketManager.Instance;
-
-        socketManager.OnConnected += OnSocketConnected;
-        socketManager.OnDisconnected += OnSocketDisconnected;
-        socketManager.OnGameStateReceived += OnGameStateReceived;
-
     }
+
 
     private void OnDestroy() {
-        // Unregister events to prevent memory leaks
-        if (socketManager != null) {
-            socketManager.OnConnected -= OnSocketConnected;
-            socketManager.OnDisconnected -= OnSocketDisconnected;
-            socketManager.OnGameStateReceived -= OnGameStateReceived;
-        }
+        // Unsubscribe from events
+        // if (webSocket != null) {
+        //     webSocket.OnConnected -= HandleConnected;
+        // }
     }
 
-    private void OnSocketConnected() {
-        Debug.Log("Socket connected, sending initial currency");
-        socketManager.UpdateCurrency(currency);
-    }
-
-    private void OnSocketDisconnected() {
-        Debug.Log("Socket disconnected");
-        // Handle disconnection (maybe try to reconnect)
-    }
-
-    private void OnGameStateReceived(GameState state) {
-        isUpdatingFromServer = true;
-
-        // Update currency if it's different
-        if (currency != state.Currency) {
-            currency = state.Currency;
-            Debug.Log($"Currency updated from server: {currency}");
-        }
-
-        isUpdatingFromServer = false;
-    }
-
+    // Increase currency
     public void IncreaseCurrency(int amount) {
         currency += amount;
+        Debug.Log($"Currency increased by {amount}, now: {currency}");
 
-        // Sync with backend if we're not currently updating from server
-        if (!isUpdatingFromServer && socketManager != null && socketManager.IsConnected()) {
-            socketManager.UpdateCurrency(currency);
+        if (wsClient != null) {
+            SendWebSocketMessage($"Currency increased by {amount}, now: {currency}");
         }
     }
 
+    // Spend currency
     public bool SpendCurrency(int amount) {
         if (amount <= currency) {
-            //Buy
             currency -= amount;
+            Debug.Log($"Spent {amount} currency, remaining: {currency}");
 
-            // Sync with backend if we're not currently updating from server
-            if (!isUpdatingFromServer && socketManager != null && socketManager.IsConnected()) {
-                socketManager.UpdateCurrency(currency);
+            if (wsClient != null) {
+                SendWebSocketMessage($"Spent {amount} currency, remaining: {currency}");
             }
 
             return true;
         } else {
-            Debug.Log("No monies :<");
+            Debug.Log($"Not enough currency: {currency} < {amount}");
             return false;
         }
+    }
+
+    private void SendWebSocketMessage(string message) {
+        wsClient.SendWebSocketMessage(message);
+
     }
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import DOMRenderer from "@/app/components/game/DOMRenderer";
-import GameDashboard from "@/app/components/dashboard/GameDashboard";
+import DOMRenderer from "@/components/game/DOMRenderer";
+import GameDashboard from "@/components/dashboard/GameDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Home() {
