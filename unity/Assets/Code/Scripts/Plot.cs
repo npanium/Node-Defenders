@@ -6,18 +6,28 @@ public class Plot : MonoBehaviour {
     [Header("References")]
     [SerializeField] private SpriteRenderer sr;
     [SerializeField] private Color hoverColor;
+    [SerializeField] private GameObject placeNodeUI;
 
     private GameObject nodeObj;
     public Node node;
     private Color startColor;
 
     // private WsClient wsClient;
+    private Menu menuController;
+
 
     private void Start() {
         startColor = sr.color;
 
         // wsClient = FindObjectOfType<WsClient>();
 
+        if (placeNodeUI == null) {
+            Debug.LogError("PlaceNodeUI reference is missing on Plot: " + gameObject.name);
+        }
+        menuController = FindObjectOfType<Menu>();
+        if (menuController == null) {
+            Debug.LogWarning("Plot: Menu controller not found in scene");
+        }
         // if (wsClient != null) {
         //     Debug.Log("Plot: WsClient reference obtained");
         // } else {
@@ -26,7 +36,9 @@ public class Plot : MonoBehaviour {
     }
 
     private void OnMouseEnter() {
-        sr.color = hoverColor;
+        if (nodeObj == null) {
+            sr.color = hoverColor;
+        }
     }
 
     private void OnMouseExit() {
@@ -35,55 +47,89 @@ public class Plot : MonoBehaviour {
 
     private void OnMouseDown() {
         if (UIManager.main.IsHoveringUI()) return;
-
         // if (wsClient != null) {
         //     wsClient.SendWebSocketMessage("Plot clicked");
         // }
-
+        Debug.Log("OnMouseDown");
         if (nodeObj != null) {
-            node.OpenUpgradeUI();
+            Debug.Log("Node exists - would handle upgrade via NextJS: " + nodeObj.name);
             return;
         }
 
-        // Get selected node from build manager
-        NodeTower nodeToBuild = BuildManager.main.GetSelectedNode();
+        OpenPlaceNodeUI();
+
+
+    }
+
+    public void OpenPlaceNodeUI() {
+        Debug.Log("OpenPlaceNodeUI");
+
+        // To avoid conflicts with the UIClickOutsideHandler script
+        StartCoroutine(OpenUINextFrame());
+
+        // placeNodeUI.SetActive(true);
+
+        // UIManager.main.SetHoveringState(true);
+
+        // UIClickOutsideHandler clickOutsideHandler = placeNodeUI.GetComponent<UIClickOutsideHandler>();
+        // if (clickOutsideHandler == null) {
+        //     // Add the handler if it doesn't exist
+        //     clickOutsideHandler = placeNodeUI.AddComponent<UIClickOutsideHandler>();
+        //     clickOutsideHandler.targetUI = placeNodeUI;
+        // }
+
+
+        // if (menuController != null) {
+        //     menuController.SetSelectedPlot(this);
+        // }
+    }
+
+    private IEnumerator OpenUINextFrame() {
+        // Wait for the end of the current frame
+        yield return null;
+
+        Debug.Log("OpenPlaceNodeUI - Delayed execution");
+
+        placeNodeUI.SetActive(true);
+        UIManager.main.SetHoveringState(true);
+
+        UIClickOutsideHandler clickOutsideHandler = placeNodeUI.GetComponent<UIClickOutsideHandler>();
+        if (clickOutsideHandler == null) {
+            // Add the handler if it doesn't exist
+            clickOutsideHandler = placeNodeUI.AddComponent<UIClickOutsideHandler>();
+            clickOutsideHandler.targetUI = placeNodeUI;
+        }
+
+        if (menuController != null) {
+            menuController.SetSelectedPlot(this);
+        }
+    }
+
+    public void PlaceNode(int nodeIndex) {
+        NodeTower nodeToBuild = BuildManager.main.GetTowerAtIndex(nodeIndex);
+
         if (nodeToBuild == null) {
-            Debug.LogWarning("No node selected to build");
+            Debug.LogWarning("Invalid node index: " + nodeIndex);
             return;
         }
 
         // Check if enough currency
         if (nodeToBuild.cost > LevelManager.main.currency) {
-            Debug.Log("Not enough currency!");
-
-            // if (wsClient != null) {
-            //     wsClient.SendWebSocketMessage("Not enough currency for node. Required: " + nodeToBuild.cost + ", Available: " + LevelManager.main.currency);
-            // }
+            Debug.Log("Not enough currency! Need " + nodeToBuild.cost + " but have " + LevelManager.main.currency);
             return;
         }
 
-        // Spend currency
         LevelManager.main.SpendCurrency(nodeToBuild.cost);
 
-        // if (wsClient != null) {
-        //     int remainingCurrency = LevelManager.main.currency;
-        //     wsClient.SendWebSocketMessage("Currency spent on node: " + nodeToBuild.cost + ", now: " + remainingCurrency);
-        // }
-
-        // Create node
         nodeObj = Instantiate(nodeToBuild.prefab, transform.position, Quaternion.identity);
         node = nodeObj.GetComponent<Node>();
 
-        // if (wsClient != null) {
-        //     wsClient.SendWebSocketMessage("Node created at position: " + transform.position);
-        // }
-
         if (WsClient.Instance != null) {
             WsClient.Instance.NotifyNodePlaced(nodeToBuild.name);
+            WsClient.Instance.SendWebSocketMessage("Node placed: " + nodeToBuild.name + " at position " + transform.position);
         }
 
+        placeNodeUI.SetActive(false);
+        UIManager.main.SetHoveringState(false);
     }
-
-    // Method for if a node is "destroyed" goes here
-
 }

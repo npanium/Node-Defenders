@@ -9,7 +9,10 @@ public class LevelManager : MonoBehaviour {
     // Game properties
     public Transform startPoint;
     public Transform[] path;
+    public Transform mainNode;
+
     public int currency;
+    public int playerHealth { get; private set; }
 
     private WsClient wsClient;
 
@@ -20,6 +23,17 @@ public class LevelManager : MonoBehaviour {
     private void Start() {
         // Set initial currency
         currency = 100;
+
+        if (mainNode == null) {
+            GameObject mainNodeObj = GameObject.FindGameObjectWithTag("MainNode");
+            if (mainNodeObj != null) {
+                mainNode = mainNodeObj.transform;
+            } else {
+                Debug.LogError("Main Node not found in scene! Please tag your main node with 'MainNode'");
+            }
+        }
+
+        MainNodeHealth.OnHealthChanged += UpdatePlayerHealth;
 
         wsClient = FindObjectOfType<WsClient>();
 
@@ -32,10 +46,20 @@ public class LevelManager : MonoBehaviour {
 
 
     private void OnDestroy() {
+        MainNodeHealth.OnHealthChanged -= UpdatePlayerHealth;
         // Unsubscribe from events
         // if (webSocket != null) {
         //     webSocket.OnConnected -= HandleConnected;
         // }
+    }
+
+    private void UpdatePlayerHealth(int currentHealth, int maxHealth) {
+        playerHealth = currentHealth;
+
+        // Send WebSocket message if needed
+        if (wsClient != null) {
+            SendWebSocketMessage($"Player health updated: {playerHealth}/{maxHealth}");
+        }
     }
 
     // Increase currency

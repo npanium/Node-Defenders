@@ -19,6 +19,26 @@ public class BuildManager : MonoBehaviour {
     }
 
     public void SetSelectedNodeTower(int _selectedNodeTower) {
-        selectedNodeTower = _selectedNodeTower;
+
+        // Validate index
+        if (_selectedNodeTower >= 0 && _selectedNodeTower < nodeTowers.Length) {
+            selectedNodeTower = _selectedNodeTower;
+        } else {
+            Debug.LogError("Invalid node tower index: " + _selectedNodeTower);
+        }
+    }
+
+    public int GetSelectedNodeIndex() {
+        return selectedNodeTower;
+    }
+
+    // Helper method to get a tower at a specific index without changing selection
+    public NodeTower GetTowerAtIndex(int index) {
+        if (index >= 0 && index < nodeTowers.Length) {
+            return nodeTowers[index];
+        } else {
+            Debug.LogError("Tried to access invalid tower index: " + index);
+            return null;
+        }
     }
 }

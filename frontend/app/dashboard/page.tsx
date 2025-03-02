@@ -1,6 +1,7 @@
 "use client";
 
 import { EnhancedLiquidityPoolCard } from "@/components/EnhancedLiquidityPoolCard";
+import { GameLiquidityPoolCard } from "@/components/GameLiquidityPoolCard";
 import { LiquidityPoolCard } from "@/components/LiquidityPoolCard";
 
 export default function DashboardPage() {
@@ -12,8 +13,8 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Main Liquidity Pool Card */}
           {/* <LiquidityPoolCard /> */}
-          <EnhancedLiquidityPoolCard />
-
+          {/* <EnhancedLiquidityPoolCard /> */}
+          <GameLiquidityPoolCard />
           {/* Additional cards can go here */}
           <div className="w-full h-full min-h-[300px] rounded-lg border bg-card text-card-foreground shadow flex items-center justify-center">
             <p className="text-muted-foreground">Additional Pool Stats</p>
