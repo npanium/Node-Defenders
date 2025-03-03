@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 180 100% 50%; /* Cyan */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 300 100% 50%; /* Purple */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 120 100% 50%; /* Green */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 180 50% 50%; /* Cyan border */
+    --input: 217.2 32.6% 17.5%;
+    --ring: 187.5 100% 60%; /* Cyan ring slightly different */
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Custom scrollbar for a cyberpunk feel */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-cyan-600 rounded-full;
+    border: 2px solid transparent;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-cyan-500;
+  }
+}
+
+@layer components {
+  /* Neon text effect */
+  .neon-text {
+    @apply font-bold transition-all duration-300;
+    text-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
+  }
+
+  .neon-text-cyan {
+    @apply text-cyan-400 neon-text;
+  }
+
+  .neon-text-pink {
+    @apply text-pink-400 neon-text;
+  }
+
+  .neon-text-green {
+    @apply text-green-400 neon-text;
+  }
+
+  /* Glowing border for elements */
+  .neon-border {
+    @apply border transition-all duration-300;
+    box-shadow: 0 0 5px var(--tw-border-opacity),
+      0 0 10px var(--tw-border-opacity);
+  }
+
+  .neon-border-cyan {
+    @apply border-cyan-500/75 neon-border;
+    --tw-border-opacity: theme("colors.cyan.500");
+  }
+
+  .neon-border-pink {
+    @apply border-pink-500/75 neon-border;
+    --tw-border-opacity: theme("colors.pink.500");
+  }
+
+  .neon-border-green {
+    @apply border-green-500/75 neon-border;
+    --tw-border-opacity: theme("colors.green.500");
+  }
+
+  /* Cyber panels with glassy effect */
+  .cyber-panel {
+    @apply bg-slate-900/70 backdrop-blur-sm border border-indigo-500/30 rounded-lg shadow-lg;
+  }
+
+  /* Cyber buttons */
+  .cyber-button {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-300 border;
+  }
+
+  .cyber-button-cyan {
+    @apply cyber-button bg-cyan-600/80 hover:bg-cyan-500/90 text-white border-cyan-500/50;
+    box-shadow: 0 0 10px theme("colors.cyan.600");
+  }
+
+  .cyber-button-pink {
+    @apply cyber-button bg-pink-600/80 hover:bg-pink-500/90 text-white border-pink-500/50;
+    box-shadow: 0 0 10px theme("colors.pink.600");
+  }
+
+  .cyber-button-green {
+    @apply cyber-button bg-green-600/80 hover:bg-green-500/90 text-white border-green-500/50;
+    box-shadow: 0 0 10px theme("colors.green.600");
+  }
+
+  /* Grid lines for cyber background */
+  .cyber-grid {
+    background-size: 50px 50px;
+    background-image: linear-gradient(
+        to right,
+        theme("colors.cyan.900") 1px,
+        transparent 1px
+      ),
+      linear-gradient(to bottom, theme("colors.cyan.900") 1px, transparent 1px);
+    @apply bg-opacity-20;
+  }
+}

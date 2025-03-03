@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { poppins } from "../lib/fonts";
-import "./globals.css";
+import "./styles/globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {

@@ -11,6 +11,7 @@ import { chakra } from "@/lib/fonts";
 import { UnityGameComponent } from "@/components/UnityGameComponent";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
+import { NeonButton } from "@/components/cyberpunk/NeonButton";
 
 export default function Home() {
   // State for game controls
@@ -108,6 +109,7 @@ export default function Home() {
             >
               Deposit
             </button>
+            {/* <NeonButton>Deposit</NeonButton> */}
           </div>
         </div>
 
