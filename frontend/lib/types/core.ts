@@ -43,3 +43,10 @@ export interface YieldTower extends TowerBase {
 }
 
 export type Tower = ValidatorTower | LPTower | LendingTower | YieldTower;
+
+export interface GameData {
+  address: string;
+  score: number;
+  // verified: boolean;
+  // bets: number;
+}

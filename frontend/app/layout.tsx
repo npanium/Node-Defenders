@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { poppins } from "../lib/fonts";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Node Defenders",
@@ -16,7 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`dark {inter.className}`}>{children}</body>
+      <body className={`dark ${poppins.className}`}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

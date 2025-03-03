@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Tower, Position } from "@/app/lib/types/core";
-import { useGameEngine } from "@/app/lib/hooks/useGameEngine";
+import { Tower, Position } from "@/lib/types/core";
+import { useGameEngine } from "@/lib/hooks/useGameEngine";
 
 interface GridCellProps {
   position: Position;

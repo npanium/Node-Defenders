@@ -1,28 +1,33 @@
 "use client";
 
-import DOMRenderer from "@/components/game/DOMRenderer";
 import GameDashboard from "@/components/dashboard/GameDashboard";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import GameLeaderboardPageComponent from "@/components/GameLeaderboardPageComponent";
+import { chakra } from "@/lib/fonts";
+import { GameLiquidityPoolCard } from "@/components/GameLiquidityPoolCard";
 
 export default function Home() {
   return (
     <main className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">Node Defenders</h1>
-
-      <Tabs defaultValue="game" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="game">Game</TabsTrigger>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="game">
-          <DOMRenderer />
-        </TabsContent>
-
-        <TabsContent value="dashboard">
-          <GameDashboard />
-        </TabsContent>
-      </Tabs>
+      <h1 className={`text-3xl font-bold mb-6 ${chakra.className}`}>
+        Node Defenders
+      </h1>
+      <GameLiquidityPoolCard />
+      <Card className="mb-8">
+        <CardHeader>
+          <h2 className="text-xl font-semibold">Game Leaderboard</h2>
+        </CardHeader>
+        <CardContent>
+          {/* <GameLeaderboard
+                gameData={gameData}
+                // activeStep={activeStep}
+                selectedAddresses={selectedAddresses}
+                bets={bets}
+                onPlaceBet={actions.placeBet}
+              /> */}
+          <GameLeaderboardPageComponent />
+        </CardContent>
+      </Card>
     </main>
   );
 }
