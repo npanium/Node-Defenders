@@ -23,9 +23,15 @@ import {
   Crown,
   Zap,
   Skull,
+  ShipWheel,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip } from "@/components/ui/tooltip";
+import { NeonBox } from "./cyberpunk/NeonBox";
+import { CyberPanel } from "./cyberpunk/CyberPanel";
+import HolographicDisplay from "./cyberpunk/HolographicDisplay";
+import { chakra } from "@/lib/fonts";
+import FancyCyberpunkCard from "./cyberpunk/FancyCyberpunkCard";
 
 interface NodeType {
   count: number;
@@ -178,6 +184,17 @@ export function GameLiquidityPoolCard() {
 
   // Setup WebSocket connection
   useEffect(() => {
+    setPool({
+      totalNodesPlaced: 4,
+      lastUpdated: "10mins",
+      mainNodeHealth: 10,
+      currentWave: 2,
+      nextWaveCountdown: 40,
+      nodeTypes: {},
+      totalValue: 100,
+      aprEstimate: 4,
+    });
+
     const setupWebSocket = () => {
       const ws = new WebSocket("ws://localhost:8080");
 
@@ -283,262 +300,323 @@ export function GameLiquidityPoolCard() {
     : 0;
 
   return (
-    <Card
-      className={`w-full shadow-lg transition-shadow duration-300 border-2 ${
-        isYieldFrenzy
-          ? "border-amber-400 bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-background"
-          : "hover:shadow-xl"
-      }`}
-    >
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            {isYieldFrenzy ? (
-              <Flame className="h-6 w-6 text-amber-500 animate-pulse" />
-            ) : (
-              <Shield className="h-6 w-6 text-blue-500" />
-            )}
-            <CardTitle className="text-2xl font-bold">
-              {isYieldFrenzy ? "YIELD FRENZY" : "Node Commander"}
-            </CardTitle>
+    <>
+      <CyberPanel title="Node Commander" variant="cyan">
+        <div className="flex flex-col space-y-1">
+          <div className="flex justify-between">
+            <p className="text-sm font-medium text-foreground/60">
+              Main Node Health
+            </p>
+            <span className="text-sm font-bold">
+              {pool?.mainNodeHealth || 10}%
+            </span>
           </div>
-          <div className="flex gap-2">
-            <Badge variant="outline" className="flex items-center gap-1">
-              <Clock className="h-3 w-3" /> Wave {pool?.currentWave || "?"}
-            </Badge>
-            <Badge
-              variant={
-                isConnected
-                  ? isYieldFrenzy
-                    ? "destructive"
-                    : "default"
-                  : "destructive"
-              }
-              className={
-                isYieldFrenzy ? "animate-pulse bg-amber-500" : "animate-pulse"
-              }
-            >
-              {isConnected
-                ? isYieldFrenzy
-                  ? "3x REWARDS"
-                  : "Live"
-                : "Disconnected"}
-            </Badge>
-          </div>
+          <Progress
+            value={pool?.mainNodeHealth || 10}
+            className={`h-3 border ${
+              pool?.mainNodeHealth && pool.mainNodeHealth < 30
+                ? "border-red-500 shadow-[0px_0px_10px_0px_#ffa2a260]"
+                : pool?.mainNodeHealth && pool.mainNodeHealth < 60
+                ? "border-amber-500 shadow-[0px_0px_10px_0px_#ffdf2060]"
+                : "border-emerald-500 shadow-[0px_0px_10px_0px_#7bf1a860]"
+            }`}
+            indicatorClassName={`${
+              pool?.mainNodeHealth && pool.mainNodeHealth < 30
+                ? "bg-red-500"
+                : pool?.mainNodeHealth && pool.mainNodeHealth < 60
+                ? "bg-amber-500"
+                : "bg-emerald-500 "
+            }`}
+          />
         </div>
-        <CardDescription>
-          {isYieldFrenzy
-            ? "Triple rewards active! Enemies spawn 3x faster"
-            : "Command your nodes, earn rewards"}
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : (
-          <>
-            {/* Main Node Health */}
-            <div className="flex flex-col space-y-1">
-              <div className="flex justify-between">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Main Node Health
-                </p>
-                <span className="text-sm font-bold">
-                  {pool?.mainNodeHealth || 0}%
-                </span>
-              </div>
-              <Progress
-                value={pool?.mainNodeHealth || 0}
-                className="h-3"
-                indicatorClassName={`${
-                  pool?.mainNodeHealth && pool.mainNodeHealth < 30
-                    ? "bg-red-500"
-                    : pool?.mainNodeHealth && pool.mainNodeHealth < 60
-                    ? "bg-amber-500"
-                    : "bg-emerald-500"
-                }`}
+        <FancyCyberpunkCard
+          className={`rounded-lg my-6 p-3 flex items-center justify-between border border-rose-500 ${
+            isYieldFrenzy ? "bg-amber-100 dark:bg-amber-950/20" : "bg-primary/5"
+          }`}
+          style={{
+            boxShadow: "inset 0px 0px 20px 0px #b71e53",
+            background: "#b71e5334",
+          }}
+        >
+          <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <Skull
+                className={`h-7 w-7 text-rose-600 fill-rose-600/30 animate-pulse duration-1000`}
               />
+              <div>
+                <p className="text-sm font-medium">Next Wave</p>
+                <p className="text-xs text-muted-foreground">
+                  Prepare your defenses
+                </p>
+              </div>
             </div>
-
-            {/* Next Wave Timer */}
             <div
-              className={`rounded-lg p-3 flex items-center justify-between ${
-                isYieldFrenzy
-                  ? "bg-amber-100 dark:bg-amber-950/20"
-                  : "bg-primary/5"
+              className={`${chakra.className} text-2xl font-bold tabular-nums ${
+                isYieldFrenzy ? "text-amber-700 dark:text-amber-400" : ""
               }`}
             >
-              <div className="flex items-center gap-2">
-                <Skull
-                  className={`h-5 w-5 ${
-                    isYieldFrenzy ? "text-amber-600" : "text-muted-foreground"
+              {nextWaveTimer}
+            </div>
+          </div>
+        </FancyCyberpunkCard>
+      </CyberPanel>
+      <Card
+        className={`w-full shadow-lg transition-shadow duration-300 border-2 ${
+          isYieldFrenzy
+            ? "border-amber-400 bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-background"
+            : "hover:shadow-xl"
+        }`}
+      >
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              {isYieldFrenzy ? (
+                <Flame className="h-6 w-6 text-amber-500 animate-pulse" />
+              ) : (
+                <Shield className="h-6 w-6 text-blue-500" />
+              )}
+              <CardTitle className="text-2xl font-bold">
+                {isYieldFrenzy ? "YIELD FRENZY" : "Node Commander"}
+              </CardTitle>
+            </div>
+            <div className="flex gap-2">
+              <Badge variant="outline" className="flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Wave {pool?.currentWave || "?"}
+              </Badge>
+              <Badge
+                variant={
+                  isConnected
+                    ? isYieldFrenzy
+                      ? "destructive"
+                      : "default"
+                    : "destructive"
+                }
+                className={
+                  isYieldFrenzy ? "animate-pulse bg-amber-500" : "animate-pulse"
+                }
+              >
+                {isConnected
+                  ? isYieldFrenzy
+                    ? "3x REWARDS"
+                    : "Live"
+                  : "Disconnected"}
+              </Badge>
+            </div>
+          </div>
+          <CardDescription>
+            {isYieldFrenzy
+              ? "Triple rewards active! Enemies spawn 3x faster"
+              : "Command your nodes, earn rewards"}
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : (
+            <>
+              {/* Main Node Health */}
+              <div className="flex flex-col space-y-1">
+                <div className="flex justify-between">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Main Node Health
+                  </p>
+                  <span className="text-sm font-bold">
+                    {pool?.mainNodeHealth || 0}%
+                  </span>
+                </div>
+                <Progress
+                  value={pool?.mainNodeHealth || 0}
+                  className="h-3"
+                  indicatorClassName={`${
+                    pool?.mainNodeHealth && pool.mainNodeHealth < 30
+                      ? "bg-red-500"
+                      : pool?.mainNodeHealth && pool.mainNodeHealth < 60
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
                   }`}
                 />
-                <div>
-                  <p className="text-sm font-medium">Next Wave</p>
-                  <p className="text-xs text-muted-foreground">
-                    Prepare your defenses
-                  </p>
-                </div>
               </div>
+
+              {/* Next Wave Timer */}
               <div
-                className={`text-3xl font-bold tabular-nums ${
-                  isYieldFrenzy ? "text-amber-700 dark:text-amber-400" : ""
+                className={`rounded-lg p-3 flex items-center justify-between ${
+                  isYieldFrenzy
+                    ? "bg-amber-100 dark:bg-amber-950/20"
+                    : "bg-primary/5"
                 }`}
               >
-                {nextWaveTimer}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* TVL & APR */}
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  Total Value Locked
-                </p>
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-4 w-4 text-green-500" />
-                  <span className="text-2xl font-bold">
-                    {pool?.totalValue?.toLocaleString() || "0"}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Zap
-                    className={`h-4 w-4 ${
-                      isYieldFrenzy ? "text-amber-500" : "text-blue-500"
+                <div className="flex items-center gap-2">
+                  <Skull
+                    className={`h-5 w-5 ${
+                      isYieldFrenzy ? "text-amber-600" : "text-muted-foreground"
                     }`}
                   />
-                  <span
-                    className={`text-sm font-medium ${
-                      isYieldFrenzy ? "text-amber-600" : ""
-                    }`}
-                  >
-                    APR: {pool?.aprEstimate || 0}%{isYieldFrenzy && " (3x)"}
-                  </span>
+                  <div>
+                    <p className="text-sm font-medium">Next Wave</p>
+                    <p className="text-xs text-muted-foreground">
+                      Prepare your defenses
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className={`text-3xl font-bold tabular-nums ${
+                    isYieldFrenzy ? "text-amber-700 dark:text-amber-400" : ""
+                  }`}
+                >
+                  {nextWaveTimer}
                 </div>
               </div>
 
-              {/* Node Stats */}
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm text-muted-foreground">Node Fleet</p>
-                <div className="flex items-center space-x-1">
-                  <span className="text-2xl font-bold">{totalNodes}</span>
-                  <span className="text-sm text-muted-foreground">
-                    active nodes
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center">
-                    <Crown className="h-3 w-3 text-amber-500" />
-                    <span className="text-xs ml-1">
-                      {Math.round(godsPercentage)}%
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <Shield className="h-3 w-3 text-blue-500" />
-                    <span className="text-xs ml-1">
-                      {Math.round(soulPercentage)}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Node distribution */}
-            {pool?.nodeTypes && Object.keys(pool.nodeTypes).length > 0 && (
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium flex items-center gap-1">
-                    <BarChart3 className="h-4 w-4" />
-                    Node Arsenal
+              <div className="grid grid-cols-2 gap-4">
+                {/* TVL & APR */}
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    Total Value Locked
                   </p>
+                  <div className="flex items-center space-x-2">
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                    <span className="text-2xl font-bold">
+                      {pool?.totalValue?.toLocaleString() || "0"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Zap
+                      className={`h-4 w-4 ${
+                        isYieldFrenzy ? "text-amber-500" : "text-blue-500"
+                      }`}
+                    />
+                    <span
+                      className={`text-sm font-medium ${
+                        isYieldFrenzy ? "text-amber-600" : ""
+                      }`}
+                    >
+                      APR: {pool?.aprEstimate || 0}%{isYieldFrenzy && " (3x)"}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  {Object.entries(pool.nodeTypes)
-                    .sort((a, b) => {
-                      // Sort by token type first (GODS first), then by tier
-                      if (a[1].tokenType === b[1].tokenType) {
-                        return b[1].tier - a[1].tier;
-                      }
-                      return a[1].tokenType === "GODS" ? -1 : 1;
-                    })
-                    .map(([type, node]) => (
-                      <div key={type} className="space-y-1">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            {node.tokenType === "GODS" ? (
-                              <Crown className="h-3 w-3 text-amber-500" />
-                            ) : (
-                              <Shield className="h-3 w-3 text-blue-500" />
-                            )}
-                            <span
-                              className={`text-sm ${
-                                node.tokenType === "GODS"
-                                  ? "font-semibold text-amber-700 dark:text-amber-400"
-                                  : ""
-                              }`}
-                            >
-                              {type}
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              Tier {node.tier}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm font-medium">
-                              {node.count}
-                            </span>
-                            <Swords className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs font-semibold">
-                              {node.power}
-                            </span>
-                          </div>
-                        </div>
-                        <Progress
-                          value={
-                            totalNodes ? (node.count / totalNodes) * 100 : 0
-                          }
-                          className="h-2"
-                          indicatorClassName={
-                            node.tokenType === "GODS" ? "bg-amber-500" : ""
-                          }
-                        />
-                      </div>
-                    ))}
+                {/* Node Stats */}
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm text-muted-foreground">Node Fleet</p>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-2xl font-bold">{totalNodes}</span>
+                    <span className="text-sm text-muted-foreground">
+                      active nodes
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center">
+                      <Crown className="h-3 w-3 text-amber-500" />
+                      <span className="text-xs ml-1">
+                        {Math.round(godsPercentage)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <Shield className="h-3 w-3 text-blue-500" />
+                      <span className="text-xs ml-1">
+                        {Math.round(soulPercentage)}%
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
-          </>
-        )}
-      </CardContent>
 
-      <CardFooter className="flex justify-between pt-2">
-        <Button
-          size="sm"
-          variant={isYieldFrenzy ? "destructive" : "default"}
-          className={isYieldFrenzy ? "bg-amber-500 hover:bg-amber-600" : ""}
-          onClick={() => alert("Placing new node...")}
-        >
-          <Zap className="mr-2 h-4 w-4" />
-          {isYieldFrenzy ? "Add Node (3x APR)" : "Place New Node"}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={fetchPoolData}
-          disabled={isLoading}
-        >
-          <ArrowUpCircle className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
-      </CardFooter>
-    </Card>
+              {/* Node distribution */}
+              {pool?.nodeTypes && Object.keys(pool.nodeTypes).length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium flex items-center gap-1">
+                      <BarChart3 className="h-4 w-4" />
+                      Node Arsenal
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {Object.entries(pool.nodeTypes)
+                      .sort((a, b) => {
+                        // Sort by token type first (GODS first), then by tier
+                        if (a[1].tokenType === b[1].tokenType) {
+                          return b[1].tier - a[1].tier;
+                        }
+                        return a[1].tokenType === "GODS" ? -1 : 1;
+                      })
+                      .map(([type, node]) => (
+                        <div key={type} className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              {node.tokenType === "GODS" ? (
+                                <Crown className="h-3 w-3 text-amber-500" />
+                              ) : (
+                                <Shield className="h-3 w-3 text-blue-500" />
+                              )}
+                              <span
+                                className={`text-sm ${
+                                  node.tokenType === "GODS"
+                                    ? "font-semibold text-amber-700 dark:text-amber-400"
+                                    : ""
+                                }`}
+                              >
+                                {type}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                Tier {node.tier}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm font-medium">
+                                {node.count}
+                              </span>
+                              <Swords className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs font-semibold">
+                                {node.power}
+                              </span>
+                            </div>
+                          </div>
+                          <Progress
+                            value={
+                              totalNodes ? (node.count / totalNodes) * 100 : 0
+                            }
+                            className="h-2"
+                            indicatorClassName={
+                              node.tokenType === "GODS" ? "bg-amber-500" : ""
+                            }
+                          />
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+
+        <CardFooter className="flex justify-between pt-2">
+          <Button
+            size="sm"
+            variant={isYieldFrenzy ? "destructive" : "default"}
+            className={isYieldFrenzy ? "bg-amber-500 hover:bg-amber-600" : ""}
+            onClick={() => alert("Placing new node...")}
+          >
+            <Zap className="mr-2 h-4 w-4" />
+            {isYieldFrenzy ? "Add Node (3x APR)" : "Place New Node"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={fetchPoolData}
+            disabled={isLoading}
+          >
+            <ArrowUpCircle className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </CardFooter>
+      </Card>
+    </>
   );
 }

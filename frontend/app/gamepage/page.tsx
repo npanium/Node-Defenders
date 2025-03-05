@@ -12,6 +12,11 @@ import { UnityGameComponent } from "@/components/UnityGameComponent";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
 import { NeonButton } from "@/components/cyberpunk/NeonButton";
+import Navbar from "@/components/Navbar";
+import FancyCyberpunkCard from "@/components/cyberpunk/FancyCyberpunkCard";
+import HolographicDisplay from "@/components/cyberpunk/HolographicDisplay";
+import AnimatedNeonButtonGroup from "@/components/cyberpunk/AnimatedNeonButtonGroup";
+import CyberStatsDisplay from "@/components/cyberpunk/CyberStatsDisplay";
 
 export default function Home() {
   // State for game controls
@@ -39,85 +44,13 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-950 to-slate-950 text-white overflow-hidden relative">
-      {/* Background glow effects */}
-      <div className="absolute -top-20 -left-20 w-96 h-96 bg-purple-600 rounded-full filter blur-[120px] opacity-20"></div>
-      <div className="absolute top-1/3 -right-20 w-96 h-96 bg-blue-500 rounded-full filter blur-[120px] opacity-20"></div>
-      <div className="absolute -bottom-20 left-1/3 w-96 h-96 bg-cyan-400 rounded-full filter blur-[100px] opacity-10"></div>
+    <div>
+      <main className="mx-auto relative z-10">
+        <Navbar />
 
-      {/* Main content */}
-      <main className="container mx-auto p-4 relative z-10">
-        {/* Header with controls */}
-        <div className="flex justify-between items-center mb-6 py-3 px-4 bg-slate-900/60 backdrop-blur-sm rounded-xl border border-indigo-500/30 shadow-lg">
-          <h1
-            className={`text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 text-transparent bg-clip-text ${chakra.className}`}
-          >
-            Node Defenders
-          </h1>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Toggle
-                pressed={soundEnabled}
-                onPressedChange={setSoundEnabled}
-                className="bg-slate-800/70 border border-indigo-500/50 hover:bg-indigo-900/50 data-[state=on]:bg-indigo-600"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  {soundEnabled ? (
-                    <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-                  ) : (
-                    <path d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"></path>
-                  )}
-                </svg>
-              </Toggle>
-
-              <div className="flex items-center gap-2 py-1 px-3 bg-slate-800/70 rounded-lg border border-indigo-500/50">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"></path>
-                  <path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path>
-                  <path d="M18 12a2 2 0 0 0 0 4h2v-4Z"></path>
-                </svg>
-                <span className="font-mono text-cyan-300">
-                  ${playerBalance.toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            <button
-              className="py-1 px-4 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-medium transition-all shadow-lg shadow-indigo-600/30 border border-indigo-500/50"
-              onClick={() => setPlayerBalance((prev) => prev + 100)}
-            >
-              Deposit
-            </button>
-            {/* <NeonButton>Deposit</NeonButton> */}
-          </div>
-        </div>
-
-        {/* Game layout - 3 column grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Left sidebar - Game controls and stats */}
+        <div className="container grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="md:col-span-3">
-            <Card className="bg-slate-900/60 backdrop-blur-sm border-indigo-500/30 shadow-lg shadow-indigo-900/20 overflow-hidden">
+            {/* <Card className="bg-slate-900/60 backdrop-blur-sm border-indigo-500/30 shadow-lg shadow-indigo-900/20 overflow-hidden">
               <CardHeader className="border-b border-indigo-500/20 pb-3">
                 <h2 className="text-xl font-semibold text-cyan-300">
                   Game Controls
@@ -188,9 +121,9 @@ export default function Home() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
 
-            <div className="mt-6">
+            <div className="mt-0">
               <GameLiquidityPoolCard />
             </div>
           </div>

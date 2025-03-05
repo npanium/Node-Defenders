@@ -12,7 +12,7 @@
   --rk-custom-colors-modalTextSecondary: #e2dcfe5f;
   --rk-custom-radii-modal: 0.775rem;
   --rk-custom-colors-menuItemBackground: #424b6c6e;
-  --rk-custom-border-thickness: 2px;
+  --rk-custom-border-thickness: 1px;
   --rk-custom-border: var(--rk-custom-border-thickness) solid #39ffb3;
   --rk-custom-colors-modalBackdrop: #0d111fc6;
 }
