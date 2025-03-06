@@ -208,14 +208,16 @@ export const CyberPanel = ({
             {title && (
               <>
                 <ShipWheel
-                  className="h-6 w-6 text-cyan-500 group-hover:animate-[spin_4s_linear_infinite]"
+                  className={`h-6 w-6 ${variantMap[variant].text} group-hover:animate-[spin_4s_linear_infinite]`}
                   style={{
                     textShadow: "0px 0px 10px #51a2ff",
                   }}
                 />
                 <h2
                   className={`text-2xl font-semibold ${variantMap[variant].text}`}
-                  style={{ textShadow: "0px 0px 15px #51a2ff" }}
+                  style={{
+                    textShadow: `0px 0px 7px ${variantMap[variant].primary}`,
+                  }}
                 >
                   {title}
                 </h2>

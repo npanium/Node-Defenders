@@ -165,7 +165,7 @@ export const FancyCyberpunkCard = ({
       )}
 
       {/* Content area */}
-      <div className="p-2 m-auto">
+      <div className="p-2 my-auto">
         {/* Circuit pattern in the background */}
         {circuitPattern && (
           <div

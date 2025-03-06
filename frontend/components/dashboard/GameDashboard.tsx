@@ -2,7 +2,7 @@
 
 import { useGameEngine } from "@/lib/hooks/useGameEngine";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { GameLiquidityPoolCard } from "../GameLiquidityPoolCard";
+import { GameControlCard } from "../GameControlCard";
 
 const GameDashboard: React.FC = () => {
   const { gameState, harvestYield } = useGameEngine();
@@ -11,7 +11,7 @@ const GameDashboard: React.FC = () => {
 
   return (
     <div>
-      <GameLiquidityPoolCard />
+      <GameControlCard />
     </div>
   );
 };

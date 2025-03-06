@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import GameDashboard from "@/components/dashboard/GameDashboard";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import GameLeaderboardPageComponent from "@/components/GameLeaderboardPageComponent";
-import { GameLiquidityPoolCard } from "@/components/GameLiquidityPoolCard";
+import { GameControlCard } from "@/components/GameControlCard";
 import { chakra } from "@/lib/fonts";
 
 // New components for cyberpunk theme
@@ -17,6 +17,7 @@ import FancyCyberpunkCard from "@/components/cyberpunk/FancyCyberpunkCard";
 import HolographicDisplay from "@/components/cyberpunk/HolographicDisplay";
 import AnimatedNeonButtonGroup from "@/components/cyberpunk/AnimatedNeonButtonGroup";
 import CyberStatsDisplay from "@/components/cyberpunk/CyberStatsDisplay";
+import CyberPoolPanel from "@/components/cyberpunk/CyberPoolPanel";
 
 export default function Home() {
   // State for game controls
@@ -124,7 +125,8 @@ export default function Home() {
             </Card> */}
 
             <div className="mt-0">
-              <GameLiquidityPoolCard />
+              <GameControlCard />
+              <CyberPoolPanel title="Pools" variant="cyan" />
             </div>
           </div>
 
