@@ -4,7 +4,7 @@ import GameDashboard from "@/components/dashboard/GameDashboard";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import GameLeaderboardPageComponent from "@/components/GameLeaderboardPageComponent";
 import { chakra } from "@/lib/fonts";
-import { GameLiquidityPoolCard } from "@/components/GameLiquidityPoolCard";
+import { GameControlCard } from "@/components/GameControlCard";
 
 export default function Home() {
   return (
@@ -12,7 +12,7 @@ export default function Home() {
       <h1 className={`text-3xl font-bold mb-6 ${chakra.className}`}>
         Node Defenders
       </h1>
-      <GameLiquidityPoolCard />
+      <GameControlCard />
       <Card className="mb-8">
         <CardHeader>
           <h2 className="text-xl font-semibold">Game Leaderboard</h2>

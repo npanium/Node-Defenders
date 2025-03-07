@@ -13,11 +13,8 @@ import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
 import { NeonButton } from "@/components/cyberpunk/NeonButton";
 import Navbar from "@/components/Navbar";
-import FancyCyberpunkCard from "@/components/cyberpunk/FancyCyberpunkCard";
-import HolographicDisplay from "@/components/cyberpunk/HolographicDisplay";
-import AnimatedNeonButtonGroup from "@/components/cyberpunk/AnimatedNeonButtonGroup";
-import CyberStatsDisplay from "@/components/cyberpunk/CyberStatsDisplay";
-import CyberPoolPanel from "@/components/cyberpunk/CyberPoolPanel";
+
+import NodePoolManager from "@/components/NodePoolManager";
 
 export default function Home() {
   // State for game controls
@@ -124,9 +121,9 @@ export default function Home() {
               </CardContent>
             </Card> */}
 
-            <div className="mt-0">
+            <div className="mt-0 flex flex-col gap-4">
               <GameControlCard />
-              <CyberPoolPanel title="Pools" variant="cyan" />
+              <NodePoolManager />
             </div>
           </div>
 

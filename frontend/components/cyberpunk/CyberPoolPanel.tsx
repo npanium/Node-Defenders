@@ -101,7 +101,7 @@ export const CyberPoolPanel = ({
       {(title || headerContent) && (
         <div
           ref={headerRef}
-          className={`${chakra.className} relative border-b ${variantMap[variant].divider} pb-3 px-4 pt-4 flex justify-between items-center ${variantMap[variant].headerGradient} overflow-hidden`}
+          className={`${chakra.className} relative border-b ${variantMap[variant].divider} pb-3 px-4 pt-4 flex flex-col ${variantMap[variant].headerGradient} overflow-hidden`}
           style={{ minHeight: "65px" }}
         >
           {/* SVG Wave Animation */}
