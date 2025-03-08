@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip } from "@/components/ui/tooltip";
-import { NeonBox } from "./cyberpunk/NeonBox";
 import { CyberPanel } from "./cyberpunk/CyberPanel";
 import HolographicDisplay from "./cyberpunk/HolographicDisplay";
 import { chakra } from "@/lib/fonts";

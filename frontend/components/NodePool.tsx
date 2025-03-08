@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AnimatedNeonButtonGroup from "./cyberpunk/AnimatedNeonButtonGroup";
+import CyberpunkNeonButton from "./cyberpunk/CyberpunkNeonButton";
 
 // Node types
 export type NodeType = "validator" | "harvester" | "defender" | "attacker";
@@ -134,10 +136,8 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
             }}
           />
 
-          {/* Node visual representation */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative">
-              {/* Node icon with animated ring */}
               <div
                 className={cn(
                   "w-20 h-20 rounded-full flex items-center justify-center",
@@ -147,7 +147,6 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
               >
                 <NodeIcon className={`w-10 h-10 text-${info.color}-400`} />
 
-                {/* Range indicator animation */}
                 <div
                   className={cn(
                     "absolute -inset-4 rounded-full border-2 border-dashed opacity-30",
@@ -159,17 +158,21 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                   }}
                 ></div>
 
-                {/* Fire rate animation (dots circling the node) */}
                 {[...Array(6)].map((_, i) => (
                   <div
                     key={i}
                     className={`absolute w-2 h-2 rounded-full bg-${info.color}-400`}
                     style={{
-                      animation: `orbit ${
-                        2 / nodeStats.speed
-                      }s linear infinite`,
-                      animationDelay: `${i * (2 / nodeStats.speed / 6)}s`,
+                      animation: `
+                        orbit ${2 / nodeStats.speed}s linear infinite,
+                        pulse-glow 1.5s ease-in-out infinite
+                      `,
+                      animationDelay: `
+                        ${i * (12 / nodeStats.speed / 6)}s,
+                        ${i * 0.2}s
+                      `,
                       transformOrigin: "center",
+                      boxShadow: `0 0 6px var(--${info.color}-400), 0 0 10px var(--${info.color}-500)`,
                     }}
                   ></div>
                 ))}
@@ -177,16 +180,17 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
             </div>
           </div>
 
-          {/* Damage/power indicators */}
           <div className="absolute bottom-2 left-2 right-2">
-            <div className="flex justify-between items-center text-xs text-slate-400 mb-1">
+            <div className="flex justify-between items-center text-sm text-gray-400 mb-1">
               <span>Power</span>
-              <span>{nodeStats.damage.toFixed(1)}</span>
+              <span className="font-bold text-amber-400">
+                {nodeStats.damage.toFixed(1)}
+              </span>
             </div>
             <Progress
               value={calculateStatPercentage(nodeStats.damage)}
-              className={`h-1.5 bg-slate-700/50`}
-              indicatorClassName={`bg-gradient-to-r from-${info.color}-900 to-${info.color}-500`}
+              className={`h-2 bg-slate-700/50`}
+              indicatorClassName={`bg-gradient-to-r from-amber-400 to-amber-800 rounded border-r border-slate-950`}
             />
           </div>
         </div>
@@ -202,7 +206,8 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
             </div>
             <Progress
               value={calculateStatPercentage(nodeStats.damage)}
-              className="h-1 bg-slate-700/30"
+              className="h-1.5 bg-slate-700/30"
+              indicatorClassName={`bg-gradient-to-r from-rose-400 to-rose-700 rounded border-r border-slate-950`}
             />
           </div>
 
@@ -215,7 +220,8 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
             </div>
             <Progress
               value={calculateStatPercentage(nodeStats.range)}
-              className="h-1 bg-slate-700/30"
+              className="h-1.5 bg-slate-700/30"
+              indicatorClassName={`bg-gradient-to-r from-violet-400 to-violet-700 rounded border-r border-slate-950`}
             />
           </div>
 
@@ -228,7 +234,8 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
             </div>
             <Progress
               value={calculateStatPercentage(nodeStats.speed)}
-              className="h-1 bg-slate-700/30"
+              className="h-1.5 bg-slate-700/30"
+              indicatorClassName={`bg-gradient-to-r from-blue-400 to-blue-700 rounded border-r border-slate-950`}
             />
           </div>
 
@@ -241,20 +248,20 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
             </div>
             <Progress
               value={calculateStatPercentage(nodeStats.efficiency)}
-              className="h-1 bg-slate-700/30"
+              className="h-1.5 bg-slate-700/30"
+              indicatorClassName={`bg-gradient-to-r from-lime-400 to-lime-700 rounded border-r border-slate-950`}
             />
           </div>
         </div>
-
-        {/* Token staking interface */}
-        <Tabs defaultValue="stake" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-slate-800/30">
+        {/* <div className="w-full border-t border-cyan-500/40" /> */}
+        <Tabs defaultValue="stake" className="w-full pt-2 ">
+          <TabsList className="grid w-full grid-cols-2 bg-slate-700/30">
             <TabsTrigger value="stake">Stake</TabsTrigger>
             <TabsTrigger value="unstake">Unstake</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="stake" className="space-y-3 pt-3">
-            <div className="flex justify-between text-xs text-slate-400">
+          <TabsContent value="stake" className="space-y-3">
+            <div className="flex justify-between text-xs text-slate-400 pb-2">
               <div>Available:</div>
               <div className="space-x-2">
                 <span
@@ -279,37 +286,37 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "flex-1 border-slate-700",
+                  "flex-1 border-slate-700 hover:bg-blue-950",
                   selectedToken === "gods" &&
-                    `border-${info.color}-500 bg-slate-900`
+                    `border-transparent bg-gradient-to-tr from-blue-700 to-blue-950`
                 )}
                 onClick={() => setSelectedToken("gods")}
               >
                 $GODS
-                <span className="ml-1 text-xs text-slate-400">(+DMG)</span>
+                {/* <span className="ml-1 text-xs text-slate-400">(+DAMAGE)</span> */}
               </Button>
 
               <Button
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "flex-1 border-slate-700",
+                  "flex-1 border-slate-700 hover:bg-blue-950",
                   selectedToken === "soul" &&
-                    `border-${info.color}-500 bg-slate-900`
+                    `border-transparent bg-gradient-to-tr from-blue-700 to-blue-950`
                 )}
                 onClick={() => setSelectedToken("soul")}
               >
                 $SOUL
-                <span className="ml-1 text-xs text-slate-400">(+RNG)</span>
+                {/* <span className="ml-1 text-xs text-slate-400">(+RANGE)</span> */}
               </Button>
             </div>
 
-            <div className="space-y-2">
+            <div className="">
               <div className="flex justify-between text-xs text-slate-400">
                 <span>Amount: {stakeAmount}</span>
                 <span>
-                  {selectedToken === "gods" ? "+DMG" : "+RNG"}:
-                  <span className={`text-${info.color}-400 ml-1`}>
+                  {selectedToken === "gods" ? "+DAMAGE" : "+RANGE"}:
+                  <span className={`text-${info.color}-400 ml-1 font-bold`}>
                     +{(stakeAmount * 0.1).toFixed(1)}
                   </span>
                 </span>
@@ -326,21 +333,21 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                 )}
                 step={1}
                 onValueChange={(value) => setStakeAmount(value[0])}
+                className="my-3"
               />
 
-              <Button
-                className={`w-full bg-${info.color}-600 hover:bg-${info.color}-500`}
-                size="sm"
+              <CyberpunkNeonButton
+                className="w-full"
                 onClick={() => onStake(selectedToken, stakeAmount)}
               >
-                <Plus className="mr-1 h-4 w-4" />
-                Stake {stakeAmount} ${selectedToken.toUpperCase()}
-              </Button>
+                <Plus className="mr-1 h-4 w-4" /> Stake {stakeAmount} $
+                {selectedToken.toUpperCase()}
+              </CyberpunkNeonButton>
             </div>
           </TabsContent>
 
-          <TabsContent value="unstake" className="space-y-3 pt-3">
-            <div className="flex justify-between text-xs text-slate-400">
+          <TabsContent value="unstake" className="space-y-3">
+            <div className="flex justify-between text-xs text-slate-400 pb-2">
               <div>Staked:</div>
               <div className="space-x-2">
                 <span
@@ -365,9 +372,9 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "flex-1 border-slate-700",
+                  "flex-1 border-slate-700 hover:bg-blue-950",
                   selectedToken === "gods" &&
-                    `border-${info.color}-500 bg-slate-900`
+                    `border-transparent bg-gradient-to-tr from-blue-700 to-blue-950`
                 )}
                 onClick={() => setSelectedToken("gods")}
               >
@@ -378,9 +385,9 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "flex-1 border-slate-700",
+                  "flex-1 border-slate-700 hover:bg-blue-950",
                   selectedToken === "soul" &&
-                    `border-${info.color}-500 bg-slate-900`
+                    `border-transparent bg-gradient-to-tr from-blue-700 to-blue-950`
                 )}
                 onClick={() => setSelectedToken("soul")}
               >
@@ -388,12 +395,12 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
               </Button>
             </div>
 
-            <div className="space-y-2">
+            <div className="">
               <div className="flex justify-between text-xs text-slate-400">
                 <span>Amount: {stakeAmount}</span>
                 <span>
-                  {selectedToken === "gods" ? "-DMG" : "-RNG"}:
-                  <span className="text-red-400 ml-1">
+                  {selectedToken === "gods" ? "-DAMAGE" : "-RANGE"}:
+                  <span className="text-red-400 ml-1 font-bold">
                     -{(stakeAmount * 0.1).toFixed(1)}
                   </span>
                 </span>
@@ -409,22 +416,21 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                 }
                 step={1}
                 onValueChange={(value) => setStakeAmount(value[0])}
+                className="my-3"
               />
 
-              <Button
-                variant="destructive"
+              <CyberpunkNeonButton
                 className="w-full"
-                size="sm"
+                variant="magenta"
                 onClick={() => onUnstake(selectedToken, stakeAmount)}
               >
                 <Minus className="mr-1 h-4 w-4" />
                 Unstake {stakeAmount} ${selectedToken.toUpperCase()}
-              </Button>
+              </CyberpunkNeonButton>
             </div>
           </TabsContent>
         </Tabs>
 
-        {/* CSS for animations */}
         <style jsx>{`
           @keyframes orbit {
             from {
@@ -432,6 +438,18 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
             }
             to {
               transform: rotate(360deg) translateX(25px) rotate(-360deg);
+            }
+          }
+
+          @keyframes pulse-glow {
+            0%,
+            100% {
+              filter: blur(1px);
+              opacity: 0.8;
+            }
+            50% {
+              filter: blur(3px);
+              opacity: 1;
             }
           }
         `}</style>

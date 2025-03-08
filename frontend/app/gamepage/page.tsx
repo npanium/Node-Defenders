@@ -11,7 +11,6 @@ import { chakra } from "@/lib/fonts";
 import { UnityGameComponent } from "@/components/UnityGameComponent";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
-import { NeonButton } from "@/components/cyberpunk/NeonButton";
 import Navbar from "@/components/Navbar";
 
 import NodePoolManager from "@/components/NodePoolManager";

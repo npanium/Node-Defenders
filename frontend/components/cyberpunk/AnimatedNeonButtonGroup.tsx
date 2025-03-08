@@ -124,7 +124,7 @@ export const AnimatedNeonButtonGroup = ({
   return (
     <div
       className={cn(
-        "flex items-center backdrop-blur-sm rounded-lg p-1 bg-black/20",
+        "flex w-full items-center rounded-lg p-1",
         fullWidth ? "w-full" : "inline-flex",
         className
       )}
@@ -139,12 +139,13 @@ export const AnimatedNeonButtonGroup = ({
           key={option.id}
           onClick={() => handleButtonClick(option.id)}
           className={cn(
-            "relative group flex items-center justify-center space-x-2 rounded-lg transition-all duration-100 font-medium",
+            "relative group flex flex-grow items-center justify-center rounded-lg transition-all duration-100 font-medium",
             sizeClasses,
             option.id === active
               ? `${colors.activeBg} border ${colors.text} ${colors.border}`
               : `${colors.bg} text-white/70 border-transparent`,
-            hover3DEffect && "transform hover:translate-y-0.5",
+            hover3DEffect &&
+              "transform border hover:translate-y-0.5 hover:bg-slate-700",
             illuminateActive &&
               option.id === active &&
               `shadow-lg hover:shadow-sm ${colors.glow}`,
@@ -172,7 +173,6 @@ export const AnimatedNeonButtonGroup = ({
             ></div>
           )}
 
-          {/* Button content with icon and label */}
           {option.icon && (
             <span
               className={`${
@@ -182,10 +182,10 @@ export const AnimatedNeonButtonGroup = ({
               {option.icon}
             </span>
           )}
-          <span>{option.label}</span>
+          <span className="m-auto">{option.label}</span>
 
           {/* Hover effect */}
-          <span className="absolute inset-0 rounded overflow-hidden opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none">
+          <span className=" absolute inset-0 rounded overflow-hidden opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none">
             <span className="absolute inset-0 scale-[2.5] blur-md bg-gradient-to-b from-white/5 to-transparent transform -translate-y-full group-hover:translate-y-0 transition-transform duration-500"></span>
           </span>
         </button>
