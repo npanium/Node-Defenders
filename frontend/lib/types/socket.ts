@@ -58,8 +58,13 @@ export interface UnityEventPayload {
   [key: string]: any;
 }
 
+// Base message interface
+interface BaseMessage {
+  type: string;
+}
+
 // Message type definitions for WebSocket communication
-export interface NodePlacedMessage {
+export interface NodePlacedMessage extends BaseMessage {
   type: "node_placed";
   nodeType: string;
   nodeId?: string;
@@ -68,29 +73,42 @@ export interface NodePlacedMessage {
   timestamp?: string;
 }
 
-export interface NodeDestroyedMessage {
+export interface NodeDestroyedMessage extends BaseMessage {
   type: "node_destroyed";
   nodeType?: string;
   nodeId?: string;
   timestamp?: string;
 }
 
-export interface NodeSelectedMessage {
+export interface NodeSelectedMessage extends BaseMessage {
   type: "node_selected";
   nodeId: string;
 }
 
-export interface TextMessage {
+export interface NodeStatsUpdateMessage extends BaseMessage {
+  type: "node_stats_update";
+  nodeId: string;
+  stats: NodeStats;
+  level?: number;
+}
+
+export interface UIActionMessage extends BaseMessage {
+  type: "ui_action";
+  action: string;
+  payload: Record<string, any>;
+}
+
+export interface TextMessage extends BaseMessage {
   type: "text";
   content: string;
 }
 
-export interface StateUpdateMessage {
+export interface StateUpdateMessage extends BaseMessage {
   type: "state_update";
   data: GameState;
 }
 
-export interface ActionConfirmedMessage {
+export interface ActionConfirmedMessage extends BaseMessage {
   type: "action_confirmed";
   action: string;
   success: boolean;
@@ -103,10 +121,15 @@ export type ClientMessage =
   | NodePlacedMessage
   | NodeDestroyedMessage
   | NodeSelectedMessage
+  | NodeStatsUpdateMessage
+  | UIActionMessage
   | TextMessage;
 
 // Type for server messages
-export type ServerMessage = StateUpdateMessage | ActionConfirmedMessage;
+export type ServerMessage =
+  | StateUpdateMessage
+  | ActionConfirmedMessage
+  | NodeStatsUpdateMessage;
 
 // Socket.IO event interfaces
 // Note: These are reversed from the server since we're on the client

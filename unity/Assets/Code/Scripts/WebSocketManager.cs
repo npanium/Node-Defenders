@@ -20,6 +20,7 @@ public class WsClient : MonoBehaviour {
     // Events
     public event Action<int> OnNodeCountUpdated;
     public event Action<string> OnNodeSelected;
+    public event Action<string, NodeStatsData> OnNodeStatsUpdate;
 
     // Queue for messages to process on main thread
     private ConcurrentQueue<string> messageQueue = new ConcurrentQueue<string>();
@@ -89,7 +90,7 @@ public class WsClient : MonoBehaviour {
             try {
                 ProcessServerMessage(message);
             } catch (Exception ex) {
-                Debug.LogError($"Error processing server message: {ex.Message}");
+                Debug.LogError($"Error processing server message: {ex.Message}\n{ex.StackTrace}");
             }
         }
     }
@@ -156,12 +157,25 @@ public class WsClient : MonoBehaviour {
                         UpdateNodeSelectionState();
                     }
                 }
+                // Handle node stats update
+                else if (data.type == "node_stats_update") {
+                    NodeStatsUpdateMessage statsMsg = JsonUtility.FromJson<NodeStatsUpdateMessage>(message);
+                    if (statsMsg != null && !string.IsNullOrEmpty(statsMsg.nodeId)) {
+                        Debug.Log($"Received stats update for node {statsMsg.nodeId}: Damage={statsMsg.stats.damage}, Range={statsMsg.stats.range}, Speed={statsMsg.stats.speed}, Efficiency={statsMsg.stats.efficiency}");
+
+                        // Notify subscribers about the stats update
+                        OnNodeStatsUpdate?.Invoke(statsMsg.nodeId, statsMsg.stats);
+
+                        // Find the node and update its stats
+                        UpdateNodeStats(statsMsg.nodeId, statsMsg.stats);
+                    }
+                }
             } else {
                 // Handle text messages (not JSON)
                 Debug.Log("Non-JSON message: " + message);
             }
         } catch (Exception ex) {
-            Debug.LogError($"Error parsing server message: {ex.Message}");
+            Debug.LogError($"Error parsing server message: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
@@ -192,6 +206,23 @@ public class WsClient : MonoBehaviour {
                 // This was previously selected but no longer is
                 plot.DeselectNode();
             }
+        }
+    }
+
+    // Update a node's stats
+    private void UpdateNodeStats(string nodeId, NodeStatsData stats) {
+        if (NodePlots.TryGetValue(nodeId, out Plot plot) && plot.node != null) {
+            Node node = plot.node;
+
+            // Update the node stats
+            node.SetDamage(stats.damage);
+            node.SetTargetingRange(stats.range);
+            node.SetBPS(stats.speed);
+            node.SetBulletSpeed(stats.efficiency);
+
+            Debug.Log($"Updated stats for node {nodeId} in Unity");
+        } else {
+            Debug.LogWarning($"Could not find node with ID {nodeId} to update stats");
         }
     }
 
@@ -249,7 +280,7 @@ public class WsClient : MonoBehaviour {
     public void SendWebSocketMessage(string message) {
         if (ws != null && ws.ReadyState == WebSocketState.Open) {
             ws.Send(message);
-            Debug.Log("Sent plain text message: " + message);
+            Debug.Log("Sent message: " + message);
         } else {
             Debug.LogWarning("WebSocket is not connected. Cannot send message.");
         }
@@ -292,6 +323,7 @@ public class ActionConfirmedMessage : ServerMessage {
 public class NodePlacedMessage : ServerMessage {
     public string nodeType;
     public Position position;
+    public NodeStatsData stats;
     public string timestamp;
 }
 
@@ -305,4 +337,11 @@ public class NodeDestroyedMessage : ServerMessage {
 // [Serializable]
 // public class NodeSelectedMessage : ServerMessage {
 //     public string nodeId;
-// } 
+// }
+
+[Serializable]
+public class NodeStatsUpdateMessage : ServerMessage {
+    public string nodeId;
+    public int level;
+    public NodeStatsData stats;
+}

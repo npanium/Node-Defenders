@@ -16,6 +16,16 @@ public class Bullet : MonoBehaviour {
         target = _target;
     }
 
+    // Set bullet damage
+    public void SetDamage(int damage) {
+        bulletDamage = damage;
+    }
+
+    // Set bullet speed
+    public void SetSpeed(float speed) {
+        bulletSpeed = speed;
+    }
+
     private void FixedUpdate() {
         if (!target) return;
         Vector2 direction = (target.position - transform.position).normalized;

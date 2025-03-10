@@ -6,11 +6,18 @@ export interface Position {
   z: number;
 }
 
-export interface NodeStats {
+export interface NodeStatsData {
   damage: number;
   range: number;
   speed: number;
   efficiency: number;
+}
+
+export interface LiquidityPool {
+  id: string;
+  type: string;
+  amount: number;
+  returns: string;
 }
 
 export interface NodeInfo {
@@ -18,10 +25,18 @@ export interface NodeInfo {
   type: string;
   position: Position;
   createdAt: Date;
-  stats: NodeStats;
+  stats: NodeStatsData;
 }
 
 export interface GameState {
+  // Original game state properties
+  currency?: number;
+  score?: number;
+  enemiesKilled?: number;
+  turretsPlaced?: number;
+  liquidityPools?: LiquidityPool[];
+
+  // Node tracking properties
   totalNodesPlaced: number;
   nodeTypes: Record<string, number>;
   lastUpdated: Date;
@@ -40,7 +55,7 @@ export interface NodePlacedMessage extends BaseMessage {
   nodeType: string;
   nodeId?: string;
   position?: Position;
-  stats?: NodeStats;
+  stats?: NodeStatsData;
   timestamp?: string;
 }
 
@@ -56,6 +71,21 @@ export interface NodeDestroyedMessage extends BaseMessage {
 export interface NodeSelectedMessage extends BaseMessage {
   type: "node_selected";
   nodeId: string;
+}
+
+// Message for node stats update
+export interface NodeStatsUpdateMessage extends BaseMessage {
+  type: "node_stats_update";
+  nodeId: string;
+  stats: NodeStatsData;
+  level?: number;
+}
+
+// Message for UI actions
+export interface UIActionMessage extends BaseMessage {
+  type: "ui_action";
+  action: string;
+  payload: Record<string, any>;
 }
 
 // Plain text message
@@ -84,18 +114,29 @@ export type ClientMessage =
   | NodePlacedMessage
   | NodeDestroyedMessage
   | NodeSelectedMessage
+  | NodeStatsUpdateMessage
+  | UIActionMessage
   | TextMessage;
 
 // Union type for server messages
-export type ServerMessage = StateUpdateMessage | ActionConfirmedMessage;
+export type ServerMessage =
+  | StateUpdateMessage
+  | ActionConfirmedMessage
+  | NodeStatsUpdateMessage;
 
 // Socket event interfaces
 export interface ServerToClientEvents {
   game_state_update: (state: GameState) => void;
+  ui_to_unity: (data: { action: string; payload: Record<string, any> }) => void;
 }
 
 export interface ClientToServerEvents {
   join_game: (gameId: string) => void;
+  unity_event: (data: {
+    gameId: string;
+    eventType: string;
+    payload: Record<string, any>;
+  }) => void;
   ui_action: (data: {
     gameId: string;
     action: string;

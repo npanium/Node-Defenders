@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Droplets, Zap, Target, Swords, Plus, Minus } from "lucide-react";
-import { CyberPoolPanel } from "./cyberpunk/CyberPoolPanel";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AnimatedNeonButtonGroup from "./cyberpunk/AnimatedNeonButtonGroup";
 import CyberpunkNeonButton from "./cyberpunk/CyberpunkNeonButton";
+import useSocket from "@/lib/hooks/useSocket";
 
-// Node types
 export type NodeType = "validator" | "harvester" | "defender" | "attacker";
 
 interface NodeStats {
@@ -80,6 +78,7 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
   const [selectedToken, setSelectedToken] = useState<"gods" | "soul">("gods");
   const [isHovering, setIsHovering] = useState(false);
   const [pulseEffect, setPulseEffect] = useState(false);
+  const { sendUIAction } = useSocket();
 
   const info = nodeTypeInfo[nodeType];
 
@@ -100,22 +99,39 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
     return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
   };
 
+  // Handle staking with WebSocket integration
+  const handleStake = () => {
+    // Local state update
+    onStake(selectedToken, stakeAmount);
+
+    // Send to backend for synchronization with the game
+    sendUIAction("stake_tokens", {
+      nodeId,
+      tokenType: selectedToken,
+      amount: stakeAmount,
+    });
+  };
+
+  // Handle unstaking with WebSocket integration
+  const handleUnstake = () => {
+    // Only unstake if we have tokens staked
+    if (stakedTokens[selectedToken] >= stakeAmount) {
+      // Local state update
+      onUnstake(selectedToken, stakeAmount);
+
+      // Send to backend for synchronization with the game
+      sendUIAction("stake_tokens", {
+        nodeId,
+        tokenType: selectedToken,
+        amount: -stakeAmount, // Negative amount for unstaking
+      });
+    }
+  };
+
   // Node Icon Component
   const NodeIcon = info.icon;
 
   return (
-    // <CyberPoolPanel
-    //   title={`${info.title} #${nodeId.slice(0, 4)}`}
-    //   variant={info.color as any}
-    //   className={cn("w-full max-w-md", className)}
-    //   headerContent={
-    //     <div className="flex items-center gap-2">
-    //       <span className="bg-slate-800/50 px-2 py-1 rounded text-xs text-slate-300 border border-slate-700/50">
-    //         Pool: {formatNumber(poolSize)}
-    //       </span>
-    //     </div>
-    //   }
-    // >
     <div>
       <div className="space-y-4">
         {/* Node visualization - animated container */}
@@ -253,8 +269,8 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
             />
           </div>
         </div>
-        {/* <div className="w-full border-t border-cyan-500/40" /> */}
-        <Tabs defaultValue="stake" className="w-full pt-2 ">
+
+        <Tabs defaultValue="stake" className="w-full pt-2">
           <TabsList className="grid w-full grid-cols-2 bg-slate-700/30">
             <TabsTrigger value="stake">Stake</TabsTrigger>
             <TabsTrigger value="unstake">Unstake</TabsTrigger>
@@ -293,7 +309,6 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                 onClick={() => setSelectedToken("gods")}
               >
                 $GODS
-                {/* <span className="ml-1 text-xs text-slate-400">(+DAMAGE)</span> */}
               </Button>
 
               <Button
@@ -307,7 +322,6 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                 onClick={() => setSelectedToken("soul")}
               >
                 $SOUL
-                {/* <span className="ml-1 text-xs text-slate-400">(+RANGE)</span> */}
               </Button>
             </div>
 
@@ -336,10 +350,7 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                 className="my-3"
               />
 
-              <CyberpunkNeonButton
-                className="w-full"
-                onClick={() => onStake(selectedToken, stakeAmount)}
-              >
+              <CyberpunkNeonButton className="w-full" onClick={handleStake}>
                 <Plus className="mr-1 h-4 w-4" /> Stake {stakeAmount} $
                 {selectedToken.toUpperCase()}
               </CyberpunkNeonButton>
@@ -422,7 +433,7 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
               <CyberpunkNeonButton
                 className="w-full"
                 variant="magenta"
-                onClick={() => onUnstake(selectedToken, stakeAmount)}
+                onClick={handleUnstake}
               >
                 <Minus className="mr-1 h-4 w-4" />
                 Unstake {stakeAmount} ${selectedToken.toUpperCase()}

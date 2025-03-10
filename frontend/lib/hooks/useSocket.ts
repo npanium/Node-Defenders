@@ -1,5 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { GameState, NodeInfo, StateUpdateMessage } from "../types/socket";
+import {
+  GameState,
+  NodeInfo,
+  StateUpdateMessage,
+  UIActionMessage,
+} from "../types/socket";
 
 export default function useSocket(gameId: string = "player1") {
   const [isConnected, setIsConnected] = useState(false);
@@ -53,6 +58,26 @@ export default function useSocket(gameId: string = "player1") {
             ...prev,
             ...data.data,
           }));
+        } else if (data.type === "node_stats_update") {
+          // Handle node stats update
+          const { nodeId, stats } = data;
+          console.log(`Stats update for node ${nodeId}:`, stats);
+
+          // Update node stats in local state
+          setGameState((prev) => {
+            if (!prev.nodes[nodeId]) return prev;
+
+            return {
+              ...prev,
+              nodes: {
+                ...prev.nodes,
+                [nodeId]: {
+                  ...prev.nodes[nodeId],
+                  stats: stats,
+                },
+              },
+            };
+          });
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -75,6 +100,24 @@ export default function useSocket(gameId: string = "player1") {
       console.warn("Cannot send message: WebSocket not connected");
     }
   }, []);
+
+  // Function to send UI action
+  const sendUIAction = useCallback(
+    (action: string, payload: Record<string, any>) => {
+      if (isConnected) {
+        const message: UIActionMessage = {
+          type: "ui_action",
+          action,
+          payload,
+        };
+        sendMessage(message);
+        console.log(`Sent UI action ${action}:`, payload);
+      } else {
+        console.warn("Cannot send UI action: WebSocket not connected");
+      }
+    },
+    [isConnected, sendMessage]
+  );
 
   // Function to select a node
   const selectNode = useCallback(
@@ -113,6 +156,7 @@ export default function useSocket(gameId: string = "player1") {
     isConnected,
     gameState,
     sendMessage,
+    sendUIAction,
     selectNode,
     getNodeById,
     getSelectedNode,

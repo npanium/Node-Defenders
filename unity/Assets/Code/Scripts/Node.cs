@@ -20,9 +20,13 @@ public class Node : MonoBehaviour {
     [SerializeField] private float rotationSpeed = 5f;
     [SerializeField] private float bps = 1f; //Bullet Per Second
     [SerializeField] private int baseUpgradeCost = 100;
+    [SerializeField] private float bulletSpeed = 5f;
+    [SerializeField] private int bulletDamage = 1;
 
     private float bpsBase;
     private float targetingRangeBase;
+    private float bulletSpeedBase;
+    private int bulletDamageBase;
 
     private Transform target;
     private float timeUntilFire;
@@ -37,9 +41,15 @@ public class Node : MonoBehaviour {
     [HideInInspector]
     public Plot parentPlot;
 
+    // Event for when stats are updated
+    public delegate void StatsUpdatedHandler(string nodeId, NodeStatsData stats);
+    public static event StatsUpdatedHandler OnStatsUpdated;
+
     private void Start() {
         bpsBase = bps;
         targetingRangeBase = targetingRange;
+        bulletSpeedBase = bulletSpeed;
+        bulletDamageBase = bulletDamage;
 
         upgradeButton.onClick.AddListener(Upgrade);
 
@@ -51,6 +61,37 @@ public class Node : MonoBehaviour {
             if (parentPlot != null && !string.IsNullOrEmpty(parentPlot.nodeId)) {
                 nodeId = parentPlot.nodeId;
             }
+        }
+
+        // Register for WebSocket updates
+        WsClient client = WsClient.Instance;
+        if (client != null) {
+            client.OnNodeStatsUpdate += HandleStatsUpdate;
+        }
+    }
+
+    private void OnDestroy() {
+        // Unregister from WebSocket updates
+        WsClient client = WsClient.Instance;
+        if (client != null) {
+            client.OnNodeStatsUpdate -= HandleStatsUpdate;
+        }
+    }
+
+    // Handle incoming stats updates from the backend
+    private void HandleStatsUpdate(string updatedNodeId, NodeStatsData updatedStats) {
+        // Only update if this is our node
+        if (updatedNodeId == nodeId) {
+            Debug.Log($"Updating stats for node {nodeId}");
+
+            // Update node stats from the received data
+            SetDamage(updatedStats.damage);
+            SetTargetingRange(updatedStats.range);
+            SetBPS(updatedStats.speed);
+            SetBulletSpeed(updatedStats.efficiency);
+
+            // Recalculate level based on the new stats (optional)
+            RecalculateLevel();
         }
     }
 
@@ -77,7 +118,11 @@ public class Node : MonoBehaviour {
     private void Shoot() {
         GameObject bulletObj = Instantiate(bulletPrefab, firingPoint.position, Quaternion.identity);
         Bullet bulletScript = bulletObj.GetComponent<Bullet>();
+
+        // Set bullet properties based on node stats
         bulletScript.SetTarget(target);
+        bulletScript.SetDamage(bulletDamage);
+        bulletScript.SetSpeed(bulletSpeed);
     }
 
     private bool CheckTargetIsInRange() {
@@ -92,8 +137,7 @@ public class Node : MonoBehaviour {
         }
     }
 
-    private void
-        RotateTowardsTarget() {
+    private void RotateTowardsTarget() {
         float angle = Mathf.Atan2(target.position.y - transform.position.y, target.position.x - transform.position.x) * Mathf.Rad2Deg - 180f;
 
         Quaternion targetRotation = Quaternion.Euler(new Vector3(0f, 0f, angle));
@@ -102,7 +146,6 @@ public class Node : MonoBehaviour {
 
     public void OpenUpgradeUI() {
         upgradeUI.SetActive(true);
-
     }
 
     public void CloseUpgradeUI() {
@@ -119,29 +162,43 @@ public class Node : MonoBehaviour {
 
         bps = CalculateBPS();
         targetingRange = CalculateRange();
+        bulletDamage = CalculateDamage();
+        bulletSpeed = CalculateBulletSpeed();
 
         CloseUpgradeUI();
         Debug.Log("New BPS: " + bps);
         Debug.Log("New Targeting range: " + targetingRange);
+        Debug.Log("New Damage: " + bulletDamage);
+        Debug.Log("New Bullet Speed: " + bulletSpeed);
         Debug.Log("New Cost: " + CalculateCost());
 
         // Notify about the upgrade if we have a nodeId
+        SendStatsUpdateToServer();
+    }
+
+    // Method to send stats to server
+    public void SendStatsUpdateToServer() {
         if (!string.IsNullOrEmpty(nodeId) && WsClient.Instance != null) {
-            // Create a notification about the node upgrade
-            NodeUpgradeMessage msg = new NodeUpgradeMessage {
-                type = "node_upgraded",
+            // Create a notification about the stats update
+            NodeStatsUpdateMessage msg = new NodeStatsUpdateMessage {
+                type = "node_stats_update",
                 nodeId = nodeId,
                 level = level,
                 stats = new NodeStatsData {
-                    damage = level, // For demonstration, using level as damage
+                    damage = bulletDamage,
                     range = targetingRange,
                     speed = bps,
-                    efficiency = level // For demonstration
+                    efficiency = bulletSpeed
                 }
             };
 
             string json = JsonUtility.ToJson(msg);
             WsClient.Instance.SendWebSocketMessage(json);
+
+            // Notify local listeners
+            if (OnStatsUpdated != null) {
+                OnStatsUpdated(nodeId, msg.stats);
+            }
         }
     }
 
@@ -152,6 +209,53 @@ public class Node : MonoBehaviour {
         }
     }
 
+    // Recalculate level based on stats (optional)
+    private void RecalculateLevel() {
+        // This is a simplistic approach - you might want a more complex formula
+        float bpsRatio = bps / bpsBase;
+        float rangeRatio = targetingRange / targetingRangeBase;
+        float damageRatio = bulletDamage / bulletDamageBase;
+
+        // Average improvement across stats
+        float averageImprovement = (bpsRatio + rangeRatio + damageRatio) / 3;
+
+        // Calculate level based on average improvement
+        level = Mathf.Max(1, Mathf.RoundToInt(averageImprovement * 1.5f));
+    }
+
+    // Getters and setters for node stats
+
+    public float GetTargetingRange() {
+        return targetingRange;
+    }
+
+    public void SetTargetingRange(float value) {
+        targetingRange = Mathf.Max(0.1f, value);
+    }
+
+    public float GetBPS() {
+        return bps;
+    }
+
+    public void SetBPS(float value) {
+        bps = Mathf.Max(0.1f, value);
+    }
+
+    public int GetDamage() {
+        return bulletDamage;
+    }
+
+    public void SetDamage(float value) {
+        bulletDamage = Mathf.Max(1, Mathf.RoundToInt(value));
+    }
+
+    public float GetBulletSpeed() {
+        return bulletSpeed;
+    }
+
+    public void SetBulletSpeed(float value) {
+        bulletSpeed = Mathf.Max(1f, value);
+    }
 
     private int CalculateCost() {
         return Mathf.RoundToInt(baseUpgradeCost * Mathf.Pow(level, 0.8f));
@@ -163,6 +267,14 @@ public class Node : MonoBehaviour {
 
     private float CalculateRange() {
         return targetingRangeBase * Mathf.Pow(level, 0.4f);
+    }
+
+    private int CalculateDamage() {
+        return Mathf.RoundToInt(bulletDamageBase * Mathf.Pow(level, 0.7f));
+    }
+
+    private float CalculateBulletSpeed() {
+        return bulletSpeedBase * Mathf.Pow(level, 0.3f);
     }
 
     private void OnDrawGizmosSelected() {
@@ -186,3 +298,11 @@ public class NodeUpgradeMessage {
     public int level;
     public NodeStatsData stats;
 }
+
+// [System.Serializable]
+// public class NodeStatsUpdateMessage {
+//     public string type;
+//     public string nodeId;
+//     public int level;
+//     public NodeStatsData stats;
+// }

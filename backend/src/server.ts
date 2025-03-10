@@ -8,6 +8,7 @@ import {
   GameState,
   StateUpdateMessage,
   NodeInfo,
+  NodeStatsData,
 } from "./types";
 
 const app = express();
@@ -25,6 +26,10 @@ const gameState: GameState = {
   nodes: {}, // Track individual nodes with their IDs
   selectedNodeId: null, // Track which node is currently selected
 };
+
+// Tracking recent node placements for deduplication
+const recentPlacements = new Map<string, number>(); // node_type -> timestamp
+const DEDUPLICATION_WINDOW_MS = 1000; // 1 second window for deduplication
 
 const server = http.createServer(app);
 
@@ -57,9 +62,18 @@ wss.on("connection", function connection(ws: WebSocket) {
 
       // Handle different message types
       if (message.type === "node_placed") {
-        gameState.totalNodesPlaced++;
-
         const nodeType = message.nodeType || "default";
+
+        // Check for duplicate placement
+        if (isDuplicatePlacement(nodeType)) {
+          console.log("Ignoring duplicate node placement for type:", nodeType);
+          return;
+        }
+
+        // Record this placement for deduplication
+        recordPlacement(nodeType);
+
+        gameState.totalNodesPlaced++;
         gameState.nodeTypes[nodeType] =
           (gameState.nodeTypes[nodeType] || 0) + 1;
 
@@ -68,13 +82,16 @@ wss.on("connection", function connection(ws: WebSocket) {
           message.nodeId ||
           `node_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
 
+        // Get node stats from message or generate defaults
+        const nodeStats = message.stats || getDefaultStats(nodeType);
+
         // Store the node information
         gameState.nodes[nodeId] = {
           id: nodeId,
           type: nodeType,
           position: message.position || { x: 0, y: 0, z: 0 },
           createdAt: new Date(),
-          stats: message.stats || getDefaultStats(nodeType),
+          stats: nodeStats,
         };
 
         gameState.lastUpdated = new Date();
@@ -151,6 +168,110 @@ wss.on("connection", function connection(ws: WebSocket) {
 
           ws.send(JSON.stringify(response));
         }
+      } else if (message.type === "node_stats_update") {
+        // Handle node stats update from either game or frontend
+        const nodeId = message.nodeId;
+        const stats = message.stats;
+
+        if (nodeId && stats && gameState.nodes[nodeId]) {
+          // Update node stats in game state
+          gameState.nodes[nodeId].stats = stats;
+          gameState.lastUpdated = new Date();
+
+          // Log the update
+          console.log(`Updated stats for node ${nodeId}:`, stats);
+
+          // Broadcast the update to all clients
+          broadcastGameState();
+
+          // Send specific node stats update message
+          const nodeStatsUpdateMsg = {
+            type: "node_stats_update",
+            nodeId: nodeId,
+            stats: stats,
+          };
+
+          // Broadcast to all clients (including the sender)
+          wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(nodeStatsUpdateMsg));
+            }
+          });
+
+          // Send success response to the sender
+          const response = {
+            type: "action_confirmed",
+            action: "node_stats_update",
+            success: true,
+            nodeId: nodeId,
+          };
+
+          ws.send(JSON.stringify(response));
+        } else {
+          // If node doesn't exist, send failure
+          const response = {
+            type: "action_confirmed",
+            action: "node_stats_update",
+            success: false,
+          };
+
+          ws.send(JSON.stringify(response));
+        }
+      }
+      // Handle UI actions from the frontend
+      else if (message.type === "ui_action") {
+        const action = message.action;
+        const payload = message.payload;
+
+        if (action === "stake_tokens" && payload && payload.nodeId) {
+          const { nodeId, tokenType, amount } = payload;
+
+          if (gameState.nodes[nodeId]) {
+            const node = gameState.nodes[nodeId];
+            const stats = node.stats || getDefaultStats(node.type);
+
+            // Update stats based on token type
+            if (tokenType === "gods") {
+              stats.damage += amount * 0.1; // Gods tokens boost damage
+            } else if (tokenType === "soul") {
+              stats.range += amount * 0.05; // Soul tokens boost range
+              stats.speed += amount * 0.05; // Soul tokens boost speed
+            }
+
+            // Update node stats
+            node.stats = stats;
+            gameState.lastUpdated = new Date();
+
+            console.log(`Node ${nodeId} stats updated from staking:`, stats);
+
+            // Broadcast the update to all clients
+            broadcastGameState();
+
+            // Send specific node stats update message
+            const nodeStatsUpdateMsg = {
+              type: "node_stats_update",
+              nodeId: nodeId,
+              stats: stats,
+            };
+
+            // Broadcast to all clients
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(nodeStatsUpdateMsg));
+              }
+            });
+
+            // Send success response
+            const response = {
+              type: "action_confirmed",
+              action: "stake_tokens",
+              success: true,
+              nodeId: nodeId,
+            };
+
+            ws.send(JSON.stringify(response));
+          }
+        }
       }
       // Handle plain text messages (legacy support)
       else if ("content" in message && message.content) {
@@ -161,6 +282,22 @@ wss.on("connection", function connection(ws: WebSocket) {
           const parts = message.content.split(" at position ");
           if (parts.length > 1) {
             try {
+              // Extract node type if available
+              const nodeParts = parts[0].split("Node placed: ");
+              const nodeType = nodeParts.length > 1 ? nodeParts[1] : "default";
+
+              // Check for duplicate placement
+              if (isDuplicatePlacement(nodeType)) {
+                console.log(
+                  "Ignoring duplicate text node placement for type:",
+                  nodeType
+                );
+                return;
+              }
+
+              // Record this placement for deduplication
+              recordPlacement(nodeType);
+
               // Extract the position from the message
               const positionStr = parts[1].trim();
               const posMatch = positionStr.match(
@@ -174,15 +311,13 @@ wss.on("connection", function connection(ws: WebSocket) {
                   z: parseFloat(posMatch[3]),
                 };
 
-                // Extract node type if available
-                const nodeParts = parts[0].split("Node placed: ");
-                const nodeType =
-                  nodeParts.length > 1 ? nodeParts[1] : "default";
-
                 // Generate a node ID
                 const nodeId = `node_${Date.now()}_${Math.random()
                   .toString(36)
                   .substring(2, 10)}`;
+
+                // Default stats for the node
+                const stats = getDefaultStats(nodeType);
 
                 // Store the node
                 gameState.nodes[nodeId] = {
@@ -190,7 +325,7 @@ wss.on("connection", function connection(ws: WebSocket) {
                   type: nodeType,
                   position: position,
                   createdAt: new Date(),
-                  stats: getDefaultStats(nodeType),
+                  stats: stats,
                 };
 
                 gameState.totalNodesPlaced++;
@@ -224,11 +359,31 @@ wss.on("connection", function connection(ws: WebSocket) {
   });
 });
 
-wss.on("listening", () => {
-  console.log(`listening on ${PORT}`);
-});
+// Check if a placement is a duplicate (same type within time window)
+function isDuplicatePlacement(nodeType: string): boolean {
+  const lastPlacement = recentPlacements.get(nodeType);
+  if (!lastPlacement) return false;
 
-function getDefaultStats(nodeType: string) {
+  const now = Date.now();
+  return now - lastPlacement < DEDUPLICATION_WINDOW_MS;
+}
+
+// Record a placement for deduplication
+function recordPlacement(nodeType: string): void {
+  recentPlacements.set(nodeType, Date.now());
+
+  // Clean up old entries periodically
+  if (recentPlacements.size > 100) {
+    const now = Date.now();
+    for (const [type, timestamp] of recentPlacements.entries()) {
+      if (now - timestamp > DEDUPLICATION_WINDOW_MS * 2) {
+        recentPlacements.delete(type);
+      }
+    }
+  }
+}
+
+function getDefaultStats(nodeType: string): NodeStatsData {
   switch (nodeType.toLowerCase()) {
     case "validator":
       return { damage: 3, range: 2.5, speed: 4, efficiency: 5 };
@@ -249,8 +404,10 @@ function broadcastGameState(): void {
     data: gameState,
   };
 
-  console.log(`[broadcastGameState]: ${JSON.stringify(stateMessage.data)}`);
-  console.log(`[broadcastGameState]: ${JSON.stringify(wss.clients)}`);
+  console.log(
+    `[broadcastGameState]: Broadcasting to ${wss.clients.size} clients`
+  );
+
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(stateMessage));

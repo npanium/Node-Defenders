@@ -174,32 +174,39 @@ public class Plot : MonoBehaviour {
         // Set the parent plot on the node
         if (node != null) {
             node.parentPlot = this;
-        }
 
-        if (WsClient.Instance != null) {
-            // Send more detailed node placement message
-            string nodeTypeStr = nodeToBuild.name.ToLower();
+            // Get initial stats from the node
+            float damage = node.GetDamage();
+            float range = node.GetTargetingRange();
+            float bps = node.GetBPS();
+            float bulletSpeed = node.GetBulletSpeed();
 
-            // Include position in the message
-            Vector3 position = transform.position;
+            if (WsClient.Instance != null) {
+                // Send more detailed node placement message with stats
+                string nodeTypeStr = nodeToBuild.name.ToLower();
+                Vector3 position = transform.position;
 
-            // WsClient.Instance.NotifyNodePlaced(nodeTypeStr);
-            // WsClient.Instance.SendWebSocketMessage("Node placed: " + nodeTypeStr + " at position " + position);
-            NodePlacedMessage msg = new NodePlacedMessage {
-                type = "node_placed",
-                nodeType = nodeTypeStr,
-                position = new Position {
-                    x = position.x,
-                    y = position.y,
-                    z = position.z
-                },
-                timestamp = DateTime.UtcNow.ToString("o")
-            };
+                NodePlacedMessage msg = new NodePlacedMessage {
+                    type = "node_placed",
+                    nodeType = nodeTypeStr,
+                    position = new Position {
+                        x = position.x,
+                        y = position.y,
+                        z = position.z
+                    },
+                    stats = new NodeStatsData {
+                        damage = damage,
+                        range = range,
+                        speed = bps,
+                        efficiency = bulletSpeed
+                    },
+                    timestamp = DateTime.UtcNow.ToString("o")
+                };
 
-            // Send a single, structured message
-            string json = JsonUtility.ToJson(msg);
-            WsClient.Instance.SendWebSocketMessage(json);
-
+                // Send a single, structured message
+                string json = JsonUtility.ToJson(msg);
+                WsClient.Instance.SendWebSocketMessage(json);
+            }
         }
 
         placeNodeUI.SetActive(false);
