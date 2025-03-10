@@ -29,11 +29,29 @@ public class Node : MonoBehaviour {
 
     private int level = 1;
 
+    // Store the node ID assigned by the server
+    [HideInInspector]
+    public string nodeId;
+
+    // Reference to the plot this node is placed on
+    [HideInInspector]
+    public Plot parentPlot;
+
     private void Start() {
         bpsBase = bps;
         targetingRangeBase = targetingRange;
 
         upgradeButton.onClick.AddListener(Upgrade);
+
+        // Try to get parent plot if not set
+        if (parentPlot == null) {
+            parentPlot = GetComponentInParent<Plot>();
+
+            // If we have a parent plot, get any existing nodeId
+            if (parentPlot != null && !string.IsNullOrEmpty(parentPlot.nodeId)) {
+                nodeId = parentPlot.nodeId;
+            }
+        }
     }
 
     private void Update() {
@@ -106,7 +124,34 @@ public class Node : MonoBehaviour {
         Debug.Log("New BPS: " + bps);
         Debug.Log("New Targeting range: " + targetingRange);
         Debug.Log("New Cost: " + CalculateCost());
+
+        // Notify about the upgrade if we have a nodeId
+        if (!string.IsNullOrEmpty(nodeId) && WsClient.Instance != null) {
+            // Create a notification about the node upgrade
+            NodeUpgradeMessage msg = new NodeUpgradeMessage {
+                type = "node_upgraded",
+                nodeId = nodeId,
+                level = level,
+                stats = new NodeStatsData {
+                    damage = level, // For demonstration, using level as damage
+                    range = targetingRange,
+                    speed = bps,
+                    efficiency = level // For demonstration
+                }
+            };
+
+            string json = JsonUtility.ToJson(msg);
+            WsClient.Instance.SendWebSocketMessage(json);
+        }
     }
+
+    // Method to select this node (trigger selection in parent plot)
+    public void Select() {
+        if (parentPlot != null) {
+            parentPlot.SelectNode();
+        }
+    }
+
 
     private int CalculateCost() {
         return Mathf.RoundToInt(baseUpgradeCost * Mathf.Pow(level, 0.8f));
@@ -124,4 +169,20 @@ public class Node : MonoBehaviour {
         Handles.color = Color.cyan;
         Handles.DrawWireDisc(transform.position, transform.forward, targetingRange);
     }
+}
+
+[System.Serializable]
+public class NodeStatsData {
+    public float damage;
+    public float range;
+    public float speed;
+    public float efficiency;
+}
+
+[System.Serializable]
+public class NodeUpgradeMessage {
+    public string type;
+    public string nodeId;
+    public int level;
+    public NodeStatsData stats;
 }

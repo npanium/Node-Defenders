@@ -191,25 +191,6 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
-
-            {/* Game control buttons */}
-            <div className="grid grid-cols-2 gap-4 mt-4">
-              <Button className="bg-cyan-600 hover:bg-cyan-500 rounded-lg text-white font-medium transition-all shadow-lg shadow-cyan-600/30 border border-cyan-500/50 py-6">
-                <div className="flex flex-col items-center">
-                  <span className="text-lg font-bold">Place Bet</span>
-                  <span className="text-xs text-cyan-200">5 $BET min</span>
-                </div>
-              </Button>
-
-              <Button className="bg-purple-600 hover:bg-purple-500 rounded-lg text-white font-medium transition-all shadow-lg shadow-purple-600/30 border border-purple-500/50 py-6">
-                <div className="flex flex-col items-center">
-                  <span className="text-lg font-bold">Claim Rewards</span>
-                  <span className="text-xs text-purple-200">
-                    0.00 $BET available
-                  </span>
-                </div>
-              </Button>
-            </div>
           </div>
 
           {/* Right sidebar - Leaderboard */}

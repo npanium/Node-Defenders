@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { NodePool, NodeType } from "./NodePool";
 import CyberPoolPanel from "./cyberpunk/CyberPoolPanel";
+import useSocket from "@/lib/hooks/useSocket";
 import {
   Accordion,
   AccordionContent,
@@ -67,12 +68,76 @@ interface Node {
   };
 }
 
+// Map backend node types to frontend types
+const mapNodeType = (type: string): NodeType => {
+  const lowerType = type.toLowerCase();
+  if (lowerType.includes("validator")) return "validator";
+  if (lowerType.includes("harvester")) return "harvester";
+  if (lowerType.includes("defender")) return "defender";
+  if (lowerType.includes("attacker")) return "attacker";
+  return "validator"; // Default
+};
+
 const NodePoolManager: React.FC = () => {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [selectedNodeType, setSelectedNodeType] =
     useState<NodeType>("validator");
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  // Add a new node
+  // Connect to the WebSocket
+  const { gameState, selectNode } = useSocket();
+
+  // Effect to sync nodes from gameState
+  useEffect(() => {
+    if (!gameState || !gameState.nodes) return;
+
+    // Convert server nodes to our frontend format
+    const serverNodes = gameState.nodes;
+    const updatedNodes: Node[] = [];
+
+    Object.keys(serverNodes).forEach((nodeId) => {
+      const serverNode = serverNodes[nodeId];
+
+      // Check if we already have this node in our state
+      const existingNodeIndex = nodes.findIndex((n) => n.id === nodeId);
+
+      if (existingNodeIndex >= 0) {
+        // Update existing node
+        updatedNodes.push({
+          ...nodes[existingNodeIndex],
+          type: mapNodeType(serverNode.type),
+        });
+      } else {
+        // Create new node
+        updatedNodes.push({
+          id: nodeId,
+          type: mapNodeType(serverNode.type),
+          poolSize: 100, // Default size
+          stakedTokens: { gods: 0, soul: 0 },
+          stats:
+            serverNode.stats ||
+            getInitialNodeStats(mapNodeType(serverNode.type)),
+        });
+      }
+    });
+
+    setNodes(updatedNodes);
+  }, [gameState.nodes]);
+
+  // Effect to handle node selection from the game
+  useEffect(() => {
+    if (gameState.selectedNodeId !== selectedNodeId) {
+      setSelectedNodeId(gameState.selectedNodeId);
+
+      // Auto-expand the selected node's accordion
+      if (gameState.selectedNodeId) {
+        // Implementation depends on your accordion library
+        // Here we're assuming the accordion is controlled by the value prop
+      }
+    }
+  }, [gameState.selectedNodeId]);
+
+  // Add a new node locally (not used with game integration)
   const addNode = () => {
     const newNode: Node = {
       id: generateId(),
@@ -88,6 +153,15 @@ const NodePoolManager: React.FC = () => {
   // Remove a node
   const removeNode = (id: string) => {
     setNodes((prev) => prev.filter((node) => node.id !== id));
+
+    // Also notify the game if needed
+    // TODO: Add code to notify the game about node removal
+  };
+
+  // Handle node selection in the UI
+  const handleNodeSelect = (nodeId: string) => {
+    setSelectedNodeId(nodeId);
+    selectNode(nodeId);
   };
 
   // Handle staking
@@ -167,67 +241,13 @@ const NodePoolManager: React.FC = () => {
 
   return (
     <div className="w-full mx-auto">
-      {/* Node placement controls */}
-      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 mb-4">
+      {/* Node placement controls - Hidden when integrating with game */}
+      {/* <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 mb-4">
         <h2 className="text-lg font-semibold text-slate-200 mb-3">
           Place New Node
         </h2>
-
-        <div className="flex flex-col gap-3">
-          <Button
-            variant="outline"
-            className={`border-cyan-500/50 ${
-              selectedNodeType === "validator"
-                ? "bg-cyan-900/50 text-cyan-300"
-                : ""
-            }`}
-            onClick={() => setSelectedNodeType("validator")}
-          >
-            Validator
-          </Button>
-
-          <Button
-            variant="outline"
-            className={`border-green-500/50 ${
-              selectedNodeType === "harvester"
-                ? "bg-green-900/50 text-green-300"
-                : ""
-            }`}
-            onClick={() => setSelectedNodeType("harvester")}
-          >
-            Harvester
-          </Button>
-
-          <Button
-            variant="outline"
-            className={`border-purple-500/50 ${
-              selectedNodeType === "defender"
-                ? "bg-purple-900/50 text-purple-300"
-                : ""
-            }`}
-            onClick={() => setSelectedNodeType("defender")}
-          >
-            Defender
-          </Button>
-
-          <Button
-            variant="outline"
-            className={`border-pink-500/50 ${
-              selectedNodeType === "attacker"
-                ? "bg-pink-900/50 text-pink-300"
-                : ""
-            }`}
-            onClick={() => setSelectedNodeType("attacker")}
-          >
-            Attacker
-          </Button>
-
-          <Button onClick={addNode} className="ml-auto">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Place Node
-          </Button>
-        </div>
-      </div>
+        ... node type selection buttons
+      </div> */}
 
       {/* Pools manager panel */}
       <CyberPoolPanel title="Pools Manager" variant="cyan">
@@ -243,24 +263,38 @@ const NodePoolManager: React.FC = () => {
         {nodes.length === 0 ? (
           <div className="text-center py-12 bg-slate-800/30 rounded-lg border border-dashed border-slate-700/50">
             <p className="text-slate-400">No nodes placed yet</p>
-            <Button onClick={addNode} variant="outline" className="mt-4">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Place Your First Node
-            </Button>
+            <p className="text-slate-400 mt-2">
+              Place nodes in the game to see them here
+            </p>
           </div>
         ) : (
-          <Accordion type="single" collapsible className="space-y-2">
-            {nodes.map((node, index) => {
+          <Accordion
+            type="single"
+            collapsible
+            className="space-y-2"
+            value={selectedNodeId || undefined}
+          >
+            {nodes.map((node) => {
               const nodeInfo = nodeTypeInfo[node.type];
+              const isSelected = node.id === selectedNodeId;
 
               return (
                 <AccordionItem
                   key={node.id}
                   value={node.id}
-                  className={`border border-${nodeInfo.color}-500/30 rounded-lg`}
+                  className={`border ${
+                    isSelected
+                      ? `border-${nodeInfo.color}-500`
+                      : `border-${nodeInfo.color}-500/30`
+                  } rounded-lg ${
+                    isSelected ? `ring-1 ring-${nodeInfo.color}-400` : ""
+                  }`}
                 >
                   <AccordionTrigger
-                    className={`p-3 hover:bg-slate-800/50 bg-slate-900/50 hover:no-underline`}
+                    className={`p-3 hover:bg-slate-800/50 ${
+                      isSelected ? `bg-slate-800/80` : `bg-slate-900/50`
+                    } hover:no-underline`}
+                    onClick={() => handleNodeSelect(node.id)}
                   >
                     <div className="flex justify-between items-center w-full">
                       <div className="flex items-center gap-2">

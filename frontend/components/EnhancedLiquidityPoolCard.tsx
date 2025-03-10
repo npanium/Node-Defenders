@@ -84,7 +84,7 @@ export function EnhancedLiquidityPoolCard() {
   const fetchPoolData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("http://localhost:8080/api/game-state");
+      const response = await fetch("http://localhost:4000/api/game-state");
       const result = await response.json();
 
       if (result.success && result.data) {
@@ -100,7 +100,7 @@ export function EnhancedLiquidityPoolCard() {
   // Setup WebSocket connection
   useEffect(() => {
     const setupWebSocket = () => {
-      const ws = new WebSocket("ws://localhost:8080");
+      const ws = new WebSocket("ws://localhost:");
 
       ws.onopen = () => {
         console.log("WebSocket connection established");

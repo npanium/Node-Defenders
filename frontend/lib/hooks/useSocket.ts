@@ -1,84 +1,120 @@
-import { useEffect, useState, useCallback } from "react";
-import { io, Socket } from "socket.io-client";
-import {
-  ClientToServerEvents,
-  ServerToClientEvents,
-  GameState,
-} from "../types/socket";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { GameState, NodeInfo, StateUpdateMessage } from "../types/socket";
 
 export default function useSocket(gameId: string = "player1") {
-  const [socket, setSocket] = useState<Socket<
-    ServerToClientEvents,
-    ClientToServerEvents
-  > | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+
   const [gameState, setGameState] = useState<GameState>({
     currency: 0,
     score: 0,
     enemiesKilled: 0,
     turretsPlaced: 0,
     liquidityPools: [],
+    totalNodesPlaced: 0,
+    nodeTypes: {},
+    lastUpdated: new Date(),
+    nodes: {},
+    selectedNodeId: null,
   });
 
-  // Initialize socket connection
+  // Initialize WebSocket connection
   useEffect(() => {
-    // Socket.io server URL from environment or default
-    const socketUrl =
-      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
+    // Direct WebSocket URL (not using Socket.IO)
+    const wsUrl = "ws://localhost:4000";
 
-    // Create socket instance
-    const socketInstance = io(socketUrl);
+    // Create WebSocket instance
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
 
     // Set up event listeners
-    socketInstance.on("connect", () => {
-      console.log("Socket connected!");
+    ws.onopen = () => {
+      console.log("WebSocket connected!");
       setIsConnected(true);
+    };
 
-      // Join game room
-      socketInstance.emit("join_game", gameId);
-    });
-
-    socketInstance.on("disconnect", () => {
-      console.log("Socket disconnected");
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");
       setIsConnected(false);
-    });
+    };
 
-    socketInstance.on("game_state_update", (newState) => {
-      console.log("Game state updated:", newState);
-      setGameState(newState);
-    });
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
 
-    // Set socket in state
-    setSocket(
-      socketInstance as Socket<ServerToClientEvents, ClientToServerEvents>
-    );
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("WebSocket message received:", data);
+
+        if (data.type === "state_update") {
+          console.log("Game state update received:", data.data);
+          setGameState((prev) => ({
+            ...prev,
+            ...data.data,
+          }));
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    };
 
     // Clean up on unmount
     return () => {
-      socketInstance.disconnect();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
     };
   }, [gameId]);
 
-  // UI Action helper function
-  const sendUIAction = useCallback(
-    (action: string, payload: Record<string, any>) => {
-      if (socket && isConnected) {
-        socket.emit("ui_action", {
-          gameId,
-          action,
-          payload,
+  // Helper function to send WebSocket messages
+  const sendMessage = useCallback((message: any) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+    } else {
+      console.warn("Cannot send message: WebSocket not connected");
+    }
+  }, []);
+
+  // Function to select a node
+  const selectNode = useCallback(
+    (nodeId: string) => {
+      if (isConnected) {
+        sendMessage({
+          type: "node_selected",
+          nodeId: nodeId,
         });
-      } else {
-        console.warn("Cannot send UI action: Socket not connected");
+
+        // Also update local state immediately for responsive UI
+        setGameState((prev) => ({
+          ...prev,
+          selectedNodeId: nodeId,
+        }));
       }
     },
-    [socket, isConnected, gameId]
+    [isConnected, sendMessage]
   );
 
+  // Get a single node by ID
+  const getNodeById = useCallback(
+    (nodeId: string): NodeInfo | undefined => {
+      return gameState.nodes[nodeId];
+    },
+    [gameState.nodes]
+  );
+
+  // Get currently selected node (if any)
+  const getSelectedNode = useCallback((): NodeInfo | undefined => {
+    if (!gameState.selectedNodeId) return undefined;
+    return gameState.nodes[gameState.selectedNodeId];
+  }, [gameState.selectedNodeId, gameState.nodes]);
+
   return {
-    socket,
     isConnected,
     gameState,
-    sendUIAction,
+    sendMessage,
+    selectNode,
+    getNodeById,
+    getSelectedNode,
   };
 }
