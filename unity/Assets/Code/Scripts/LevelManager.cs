@@ -136,29 +136,3 @@ public class LevelManager : MonoBehaviour {
     }
 }
 
-// Message classes for structured WebSocket communication
-[Serializable]
-public class HealthUpdateMessage {
-    public string type;
-    public int currentHealth;
-    public int maxHealth;
-    public string timestamp;
-}
-
-[Serializable]
-public class CurrencyUpdateMessage {
-    public string type;
-    public int amount;
-    public string operation; // "increase" or "decrease"
-    public int balance;
-    public string timestamp;
-}
-
-[Serializable]
-public class GameStateUpdateMessage {
-    public string type;
-    public int currency;
-    public int health;
-    public int maxHealth;
-    public string timestamp;
-}

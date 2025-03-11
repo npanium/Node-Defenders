@@ -283,26 +283,3 @@ public class Node : MonoBehaviour {
     }
 }
 
-[System.Serializable]
-public class NodeStatsData {
-    public float damage;
-    public float range;
-    public float speed;
-    public float efficiency;
-}
-
-[System.Serializable]
-public class NodeUpgradeMessage {
-    public string type;
-    public string nodeId;
-    public int level;
-    public NodeStatsData stats;
-}
-
-// [System.Serializable]
-// public class NodeStatsUpdateMessage {
-//     public string type;
-//     public string nodeId;
-//     public int level;
-//     public NodeStatsData stats;
-// }

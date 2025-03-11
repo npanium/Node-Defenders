@@ -80,8 +80,6 @@ const mapNodeType = (type: string): NodeType => {
 
 const NodePoolManager: React.FC = () => {
   const [nodes, setNodes] = useState<Node[]>([]);
-  const [selectedNodeType, setSelectedNodeType] =
-    useState<NodeType>("validator");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   // Connect to the WebSocket
@@ -136,19 +134,6 @@ const NodePoolManager: React.FC = () => {
       }
     }
   }, [gameState.selectedNodeId]);
-
-  // Add a new node locally (not used with game integration)
-  const addNode = () => {
-    const newNode: Node = {
-      id: generateId(),
-      type: selectedNodeType,
-      poolSize: 100,
-      stakedTokens: { gods: 0, soul: 0 },
-      stats: getInitialNodeStats(selectedNodeType),
-    };
-
-    setNodes((prev) => [...prev, newNode]);
-  };
 
   // Remove a node
   const removeNode = (id: string) => {
@@ -241,15 +226,6 @@ const NodePoolManager: React.FC = () => {
 
   return (
     <div className="w-full mx-auto">
-      {/* Node placement controls - Hidden when integrating with game */}
-      {/* <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 mb-4">
-        <h2 className="text-lg font-semibold text-slate-200 mb-3">
-          Place New Node
-        </h2>
-        ... node type selection buttons
-      </div> */}
-
-      {/* Pools manager panel */}
       <CyberPoolPanel title="Pools Manager" variant="cyan">
         <div className="flex justify-between mb-4">
           <p className="text-sm font-medium text-foreground/60">

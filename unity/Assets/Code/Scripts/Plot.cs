@@ -221,16 +221,3 @@ public class Plot : MonoBehaviour {
         }
     }
 }
-
-// Define the message class for node selection
-[Serializable]
-public class NodeSelectedMessage {
-    public string type;
-    public string nodeId;
-}
-[Serializable]
-public class Position {
-    public float x;
-    public float y;
-    public float z;
-}

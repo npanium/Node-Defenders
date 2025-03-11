@@ -1,11 +1,17 @@
-// Enhanced types.ts
+// Base message type
+export interface ClientMessage {
+  type: string;
+  [key: string]: any;
+}
 
+// Position interface for node placement
 export interface Position {
   x: number;
   y: number;
   z: number;
 }
 
+// Node statistics data
 export interface NodeStatsData {
   damage: number;
   range: number;
@@ -13,133 +19,97 @@ export interface NodeStatsData {
   efficiency: number;
 }
 
-export interface LiquidityPool {
-  id: string;
-  type: string;
-  amount: number;
-  returns: string;
+// Node health data
+export interface NodeHealthData {
+  currentHealth: number;
+  maxHealth: number;
+  healthPercentage: number;
+  lastUpdated: Date;
 }
 
+// Node information
 export interface NodeInfo {
   id: string;
   type: string;
   position: Position;
   createdAt: Date;
   stats: NodeStatsData;
+  health?: NodeHealthData;
 }
 
+// Game state
 export interface GameState {
-  // Original game state properties
-  currency?: number;
-  score?: number;
-  enemiesKilled?: number;
-  turretsPlaced?: number;
-  liquidityPools?: LiquidityPool[];
-
-  // Node tracking properties
   totalNodesPlaced: number;
-  nodeTypes: Record<string, number>;
+  nodeTypes: { [key: string]: number };
+  nodes: { [key: string]: NodeInfo };
   lastUpdated: Date;
-  nodes: Record<string, NodeInfo>; // Map node IDs to node objects
-  selectedNodeId: string | null; // Currently selected node
+  selectedNodeId: string | null;
+  mainNodeHealth: NodeHealthData;
 }
 
-// Base message interface
-interface BaseMessage {
+// State update message
+export interface StateUpdateMessage {
   type: string;
-}
-
-// Message for node placement
-export interface NodePlacedMessage extends BaseMessage {
-  type: "node_placed";
-  nodeType: string;
-  nodeId?: string;
-  position?: Position;
-  stats?: NodeStatsData;
-  timestamp?: string;
-}
-
-// Message for node destruction
-export interface NodeDestroyedMessage extends BaseMessage {
-  type: "node_destroyed";
-  nodeType?: string;
-  nodeId?: string;
-  timestamp?: string;
-}
-
-// Message for node selection
-export interface NodeSelectedMessage extends BaseMessage {
-  type: "node_selected";
-  nodeId: string;
-}
-
-// Message for node stats update
-export interface NodeStatsUpdateMessage extends BaseMessage {
-  type: "node_stats_update";
-  nodeId: string;
-  stats: NodeStatsData;
-  level?: number;
-}
-
-// Message for UI actions
-export interface UIActionMessage extends BaseMessage {
-  type: "ui_action";
-  action: string;
-  payload: Record<string, any>;
-}
-
-// Plain text message
-export interface TextMessage extends BaseMessage {
-  type: "text";
-  content: string;
-}
-
-// Game state update message
-export interface StateUpdateMessage extends BaseMessage {
-  type: "state_update";
   data: GameState;
 }
 
 // Action confirmation message
-export interface ActionConfirmedMessage extends BaseMessage {
-  type: "action_confirmed";
+export interface ActionConfirmedMessage {
+  type: string;
   action: string;
   success: boolean;
   newTotal?: number;
   nodeId?: string;
 }
 
-// Union type for client messages
-export type ClientMessage =
-  | NodePlacedMessage
-  | NodeDestroyedMessage
-  | NodeSelectedMessage
-  | NodeStatsUpdateMessage
-  | UIActionMessage
-  | TextMessage;
-
-// Union type for server messages
-export type ServerMessage =
-  | StateUpdateMessage
-  | ActionConfirmedMessage
-  | NodeStatsUpdateMessage;
-
-// Socket event interfaces
-export interface ServerToClientEvents {
-  game_state_update: (state: GameState) => void;
-  ui_to_unity: (data: { action: string; payload: Record<string, any> }) => void;
+// Node placement message
+export interface NodePlacedMessage extends ClientMessage {
+  nodeType: string;
+  position?: Position;
+  stats?: NodeStatsData;
+  nodeId?: string;
+  timestamp?: string;
 }
 
-export interface ClientToServerEvents {
-  join_game: (gameId: string) => void;
-  unity_event: (data: {
-    gameId: string;
-    eventType: string;
-    payload: Record<string, any>;
-  }) => void;
-  ui_action: (data: {
-    gameId: string;
-    action: string;
-    payload: Record<string, any>;
-  }) => void;
+// Node selection message
+export interface NodeSelectedMessage extends ClientMessage {
+  nodeId: string;
+}
+
+// Node destruction message
+export interface NodeDestroyedMessage extends ClientMessage {
+  nodeType?: string;
+  nodeId?: string;
+  timestamp?: string;
+}
+
+// Node stats update message
+export interface NodeStatsUpdateMessage extends ClientMessage {
+  nodeId: string;
+  stats: NodeStatsData;
+  level?: number;
+}
+
+// Node health update message
+export interface NodeHealthUpdateMessage extends ClientMessage {
+  nodeId: string;
+  currentHealth: number;
+  maxHealth: number;
+  healthPercentage: number;
+  timestamp?: string;
+}
+
+// Game over message
+export interface GameOverMessage extends ClientMessage {
+  cause: string;
+  timestamp?: string;
+}
+
+// UI action message for healing
+export interface HealNodeMessage extends ClientMessage {
+  action: string;
+  payload: {
+    nodeId: string;
+    amount: number;
+  };
 }

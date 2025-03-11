@@ -4,11 +4,16 @@ import {
   NodeInfo,
   StateUpdateMessage,
   UIActionMessage,
+  NodeHealthData,
 } from "../types/socket";
 
 export default function useSocket(gameId: string = "player1") {
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const [gameOver, setGameOver] = useState<{ isOver: boolean; cause: string }>({
+    isOver: false,
+    cause: "",
+  });
 
   const [gameState, setGameState] = useState<GameState>({
     currency: 0,
@@ -21,6 +26,12 @@ export default function useSocket(gameId: string = "player1") {
     lastUpdated: new Date(),
     nodes: {},
     selectedNodeId: null,
+    mainNodeHealth: {
+      currentHealth: 100,
+      maxHealth: 100,
+      healthPercentage: 1.0,
+      lastUpdated: new Date(),
+    },
   });
 
   // Initialize WebSocket connection
@@ -77,6 +88,56 @@ export default function useSocket(gameId: string = "player1") {
                 },
               },
             };
+          });
+        } else if (data.type === "node_health_update") {
+          // Handle node health update
+          const { nodeId, currentHealth, maxHealth, healthPercentage } = data;
+          console.log(
+            `Health update for node ${nodeId}: ${currentHealth}/${maxHealth}`
+          );
+
+          // Check if this is the main node
+          if (nodeId === "main_node") {
+            // Update main node health
+            setGameState((prev) => ({
+              ...prev,
+              mainNodeHealth: {
+                currentHealth,
+                maxHealth,
+                healthPercentage,
+                lastUpdated: new Date(),
+              },
+            }));
+          } else {
+            // Update specific node's health
+            setGameState((prev) => {
+              if (!prev.nodes[nodeId]) return prev;
+
+              return {
+                ...prev,
+                nodes: {
+                  ...prev.nodes,
+                  [nodeId]: {
+                    ...prev.nodes[nodeId],
+                    health: {
+                      currentHealth,
+                      maxHealth,
+                      healthPercentage,
+                      lastUpdated: new Date(),
+                    },
+                  },
+                },
+              };
+            });
+          }
+        } else if (data.type === "game_over") {
+          // Handle game over notification
+          const { cause } = data;
+          console.log(`Game over received! Cause: ${cause}`);
+
+          setGameOver({
+            isOver: true,
+            cause: cause || "unknown",
           });
         }
       } catch (error) {
@@ -138,6 +199,33 @@ export default function useSocket(gameId: string = "player1") {
     [isConnected, sendMessage]
   );
 
+  // Helper function to heal a node
+  const healNode = useCallback(
+    (nodeId: string, amount: number) => {
+      if (isConnected) {
+        sendUIAction("heal_node", {
+          nodeId,
+          amount,
+        });
+      }
+    },
+    [isConnected, sendUIAction]
+  );
+
+  // Helper function to stake tokens on a node
+  const stakeTokens = useCallback(
+    (nodeId: string, tokenType: string, amount: number) => {
+      if (isConnected) {
+        sendUIAction("stake_tokens", {
+          nodeId,
+          tokenType,
+          amount,
+        });
+      }
+    },
+    [isConnected, sendUIAction]
+  );
+
   // Get a single node by ID
   const getNodeById = useCallback(
     (nodeId: string): NodeInfo | undefined => {
@@ -152,13 +240,31 @@ export default function useSocket(gameId: string = "player1") {
     return gameState.nodes[gameState.selectedNodeId];
   }, [gameState.selectedNodeId, gameState.nodes]);
 
+  // Get main node health
+  const getMainNodeHealth = useCallback((): NodeHealthData => {
+    return gameState.mainNodeHealth;
+  }, [gameState.mainNodeHealth]);
+
+  // Reset game over state
+  const resetGameOver = useCallback(() => {
+    setGameOver({
+      isOver: false,
+      cause: "",
+    });
+  }, []);
+
   return {
     isConnected,
     gameState,
+    gameOver,
     sendMessage,
     sendUIAction,
     selectNode,
+    healNode,
+    stakeTokens,
     getNodeById,
     getSelectedNode,
+    getMainNodeHealth,
+    resetGameOver,
   };
 }

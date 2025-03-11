@@ -17,16 +17,25 @@ public class WsClient : MonoBehaviour {
     // Currently selected node
     public string SelectedNodeId { get; private set; } = null;
 
+    // Main node health tracking
+    public int MainNodeCurrentHealth { get; private set; } = 100;
+    public int MainNodeMaxHealth { get; private set; } = 100;
+
     // Events
     public event Action<int> OnNodeCountUpdated;
     public event Action<string> OnNodeSelected;
     public event Action<string, NodeStatsData> OnNodeStatsUpdate;
+    public event Action<string, int, int> OnNodeHealthUpdate;
+    public event Action<string> OnGameOver;
 
     // Queue for messages to process on main thread
     private ConcurrentQueue<string> messageQueue = new ConcurrentQueue<string>();
 
     // Cache of Plot objects in the scene for quick access
     private Plot[] allPlots;
+
+    // Reference to main node health component
+    private MainNodeHealth mainNodeHealth;
 
     private void Awake() {
         // Simple singleton pattern
@@ -41,6 +50,9 @@ public class WsClient : MonoBehaviour {
     private void Start() {
         // Cache all plot components in the scene
         allPlots = FindObjectsOfType<Plot>();
+
+        // Find main node health component
+        mainNodeHealth = FindObjectOfType<MainNodeHealth>();
 
         ConnectToServer();
     }
@@ -81,6 +93,11 @@ public class WsClient : MonoBehaviour {
         };
 
         ws.Connect();
+    }
+
+    // Check if the WebSocket is connected
+    public bool IsConnected() {
+        return ws != null && ws.ReadyState == WebSocketState.Open;
     }
 
     private void ProcessQueuedMessages() {
@@ -168,6 +185,37 @@ public class WsClient : MonoBehaviour {
 
                         // Find the node and update its stats
                         UpdateNodeStats(statsMsg.nodeId, statsMsg.stats);
+                    }
+                }
+                // Handle node health update
+                else if (data.type == "node_health_update") {
+                    NodeHealthUpdateMessage healthMsg = JsonUtility.FromJson<NodeHealthUpdateMessage>(message);
+                    if (healthMsg != null && !string.IsNullOrEmpty(healthMsg.nodeId)) {
+                        Debug.Log($"Received health update for node {healthMsg.nodeId}: Health={healthMsg.currentHealth}/{healthMsg.maxHealth}");
+
+                        // Check if this is the main node
+                        if (healthMsg.nodeId == "main_node") {
+                            MainNodeCurrentHealth = healthMsg.currentHealth;
+                            MainNodeMaxHealth = healthMsg.maxHealth;
+
+                            // Update main node health if component is available
+                            if (mainNodeHealth != null && healthMsg.currentHealth != mainNodeHealth.GetHealth()) {
+                                mainNodeHealth.SetHealth(healthMsg.currentHealth);
+                            }
+                        }
+
+                        // Notify subscribers about the health update
+                        OnNodeHealthUpdate?.Invoke(healthMsg.nodeId, healthMsg.currentHealth, healthMsg.maxHealth);
+                    }
+                }
+                // Handle game over notification
+                else if (data.type == "game_over") {
+                    GameOverMessage gameOverMsg = JsonUtility.FromJson<GameOverMessage>(message);
+                    if (gameOverMsg != null) {
+                        Debug.Log($"Game over notification received. Cause: {gameOverMsg.cause}");
+
+                        // Notify subscribers about game over
+                        OnGameOver?.Invoke(gameOverMsg.cause);
                     }
                 }
             } else {
@@ -291,57 +339,4 @@ public class WsClient : MonoBehaviour {
             ws.Close();
         }
     }
-}
-
-// Enhanced message classes
-
-[Serializable]
-public class ServerMessage {
-    public string type;
-}
-
-[Serializable]
-public class GameStateData {
-    public int totalNodesPlaced;
-    public string selectedNodeId;
-}
-
-[Serializable]
-public class StateUpdateMessage : ServerMessage {
-    public GameStateData data;
-}
-
-[Serializable]
-public class ActionConfirmedMessage : ServerMessage {
-    public string action;
-    public bool success;
-    public int newTotal;
-    public string nodeId;
-}
-
-[Serializable]
-public class NodePlacedMessage : ServerMessage {
-    public string nodeType;
-    public Position position;
-    public NodeStatsData stats;
-    public string timestamp;
-}
-
-[Serializable]
-public class NodeDestroyedMessage : ServerMessage {
-    public string nodeType;
-    public string nodeId;
-    public string timestamp;
-}
-
-// [Serializable]
-// public class NodeSelectedMessage : ServerMessage {
-//     public string nodeId;
-// }
-
-[Serializable]
-public class NodeStatsUpdateMessage : ServerMessage {
-    public string nodeId;
-    public int level;
-    public NodeStatsData stats;
 }
