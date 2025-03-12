@@ -56,6 +56,42 @@ public class NodeHealthUpdateMessage : ServerMessage {
     public float healthPercentage;
 }
 
+[Serializable]
+public class WaveCountdownMessage : ServerMessage {
+    public int waveNumber;
+    public float countdown;
+    public int maxWaves;
+    public string timestamp;
+}
+
+[Serializable]
+public class WaveStartedMessage : ServerMessage {
+    public int waveNumber;
+    public int enemiesInWave;
+    public int maxWaves;
+    public string timestamp;
+}
+
+[Serializable]
+public class EnemyDestroyedMessage : ServerMessage {
+    public int currencyEarned;
+    public string timestamp;
+}
+
+
+[Serializable]
+public class GameStatsMessage : ServerMessage {
+    public int currency;
+    public int enemiesKilled;
+    public string timestamp;
+}
+
+[Serializable]
+public class GameWonMessage : ServerMessage {
+    public string reason;
+    public string timestamp;
+}
+
 // Plot
 
 [Serializable]
@@ -103,5 +139,11 @@ public class GameStateUpdateMessage {
     public int currency;
     public int health;
     public int maxHealth;
+    public int enemiesKilled;
+    public string timestamp;
+}
+
+public class EnemyKilledMessage : ServerMessage {
+    public int enemiesKilled;
     public string timestamp;
 }

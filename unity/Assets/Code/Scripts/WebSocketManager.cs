@@ -310,6 +310,121 @@ public class WsClient : MonoBehaviour {
         }
     }
 
+    public void NotifyEnemyDestroyed(int currencyEarned) {
+        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+            Debug.LogWarning("WebSocket is not connected. Cannot send enemy destroyed notification.");
+            return;
+        }
+
+        try {
+            // Create a message
+            EnemyDestroyedMessage msg = new EnemyDestroyedMessage {
+                type = "enemy_destroyed",
+                currencyEarned = currencyEarned,
+                timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            string json = JsonUtility.ToJson(msg);
+            ws.Send(json);
+            Debug.Log($"Sent enemy destroyed notification with currency earned: {currencyEarned}");
+        } catch (Exception ex) {
+            Debug.LogError($"Error sending enemy destroyed notification: {ex.Message}");
+        }
+    }
+
+    public void NotifyGameStats(int currency, int enemiesKilled) {
+        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+            Debug.LogWarning("WebSocket is not connected. Cannot send game stats.");
+            return;
+        }
+
+        try {
+            // Create a message
+            GameStatsMessage msg = new GameStatsMessage {
+                type = "game_stats",
+                currency = currency,
+                enemiesKilled = enemiesKilled,
+                timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            string json = JsonUtility.ToJson(msg);
+            ws.Send(json);
+            Debug.Log($"Sent game stats: Currency {currency}, Enemies killed {enemiesKilled}");
+        } catch (Exception ex) {
+            Debug.LogError($"Error sending game stats: {ex.Message}");
+        }
+    }
+
+    public void NotifyWaveCountdown(int waveNumber, float countdown, int maxWaves) {
+        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+            Debug.LogWarning("WebSocket is not connected. Cannot send wave countdown.");
+            return;
+        }
+
+        try {
+            // Create wave countdown message
+            WaveCountdownMessage msg = new WaveCountdownMessage {
+                type = "wave_countdown",
+                waveNumber = waveNumber,
+                countdown = countdown,
+                maxWaves = maxWaves,
+                timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            string json = JsonUtility.ToJson(msg);
+            ws.Send(json);
+            Debug.Log($"Sent wave countdown: Wave {waveNumber}, Countdown {countdown}s");
+        } catch (Exception ex) {
+            Debug.LogError($"Error sending wave countdown: {ex.Message}");
+        }
+    }
+
+    public void NotifyWaveStarted(int waveNumber, int enemiesInWave, int maxWaves) {
+        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+            Debug.LogWarning("WebSocket is not connected. Cannot send wave started notification.");
+            return;
+        }
+
+        try {
+            // Create wave started message
+            WaveStartedMessage msg = new WaveStartedMessage {
+                type = "wave_started",
+                waveNumber = waveNumber,
+                enemiesInWave = enemiesInWave,
+                maxWaves = maxWaves,
+                timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            string json = JsonUtility.ToJson(msg);
+            ws.Send(json);
+            Debug.Log($"Sent wave started: Wave {waveNumber}/{maxWaves}, Enemies: {enemiesInWave}");
+        } catch (Exception ex) {
+            Debug.LogError($"Error sending wave started notification: {ex.Message}");
+        }
+    }
+
+    public void NotifyGameWon(string reason) {
+        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+            Debug.LogWarning("WebSocket is not connected. Cannot send game won notification.");
+            return;
+        }
+
+        try {
+            // Create game won message
+            GameWonMessage msg = new GameWonMessage {
+                type = "game_won",
+                reason = reason,
+                timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            string json = JsonUtility.ToJson(msg);
+            ws.Send(json);
+            Debug.Log($"Sent game won notification. Reason: {reason}");
+        } catch (Exception ex) {
+            Debug.LogError($"Error sending game won notification: {ex.Message}");
+        }
+    }
+
     // Method to select a node
     public void SelectNode(string nodeId) {
         if (ws != null && ws.ReadyState == WebSocketState.Open) {

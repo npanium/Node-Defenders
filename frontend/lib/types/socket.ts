@@ -54,7 +54,7 @@ export interface GameState {
   enemiesKilled: number;
   turretsPlaced: number;
   liquidityPools: LiquidityPool[];
-  totalNodesPlaced: number;
+  totalNodesPlaced: number | undefined;
   nodeTypes: { [key: string]: number };
   nodes: { [key: string]: NodeInfo };
   lastUpdated: Date;

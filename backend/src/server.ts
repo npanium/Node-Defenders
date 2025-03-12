@@ -17,14 +17,21 @@ app.use(express.json());
 
 const PORT = 4000;
 const HTTP_PORT = 3000;
+const DEDUPLICATION_WINDOW_MS = 1000; // 1 second window for deduplication
 
-// Enhanced game state to track individual nodes
 const gameState: GameState = {
   totalNodesPlaced: 0,
   nodeTypes: {}, // Track different types of nodes
   lastUpdated: new Date(),
+  enemiesInWave: 0,
+  enemiesKilled: 0,
+  isCountingDown: false,
+  currency: 0,
   nodes: {}, // Track individual nodes with their IDs
   selectedNodeId: null, // Track which node is currently selected
+  currentWave: 1,
+  nextWaveCountdown: 15,
+  maxWaves: 20,
   mainNodeHealth: {
     currentHealth: 100,
     maxHealth: 100,
@@ -34,8 +41,7 @@ const gameState: GameState = {
 };
 
 // Tracking recent node placements for deduplication
-const recentPlacements = new Map<string, number>(); // node_type -> timestamp
-const DEDUPLICATION_WINDOW_MS = 1000; // 1 second window for deduplication
+const recentActions = new Map<string, number>();
 
 const server = http.createServer(app);
 
@@ -48,44 +54,51 @@ type MessageHandler = (ws: WebSocket, message: any) => void;
 
 // Message handler map with index signature
 const messageHandlers: { [key: string]: MessageHandler } = {
-  // Handle node placement
   node_placed: (ws: WebSocket, message: any) => {
     const nodeType = message.nodeType || "default";
+    const actionId = `node_placed_${nodeType}_${Date.now()}`;
 
-    // Check for duplicate placement
-    if (isDuplicatePlacement(nodeType)) {
+    // Check for duplicate action
+    if (isDuplicateAction(actionId)) {
       console.log("Ignoring duplicate node placement for type:", nodeType);
       return;
     }
 
-    // Record this placement for deduplication
-    recordPlacement(nodeType);
+    // Record this action
+    recordAction(actionId);
 
+    // Update game state
     gameState.totalNodesPlaced++;
     gameState.nodeTypes[nodeType] = (gameState.nodeTypes[nodeType] || 0) + 1;
+    gameState.lastUpdated = new Date();
 
-    // Generate a unique ID for the node if not provided
+    // Generate a unique ID for the node
     const nodeId =
       message.nodeId ||
       `node_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
 
-    // Get node stats from message or generate defaults
+    // Get node stats
     const nodeStats = message.stats || getDefaultStats(nodeType);
 
-    // Store the node information
+    // Store complete node information with consistent structure
     gameState.nodes[nodeId] = {
       id: nodeId,
       type: nodeType,
       position: message.position || { x: 0, y: 0, z: 0 },
       createdAt: new Date(),
       stats: nodeStats,
+      health: {
+        currentHealth: 100,
+        maxHealth: 100,
+        healthPercentage: 1.0,
+        lastUpdated: new Date(),
+      },
     };
 
-    gameState.lastUpdated = new Date();
-
+    // Broadcast state update
     broadcastGameState();
 
-    // Send acknowledgment back to the sender with node ID
+    // Send acknowledgment
     const response: ActionConfirmedMessage = {
       type: "action_confirmed",
       action: "node_placed",
@@ -93,26 +106,40 @@ const messageHandlers: { [key: string]: MessageHandler } = {
       newTotal: gameState.totalNodesPlaced,
       nodeId: nodeId,
     };
-    console.log("Total nodes: ", gameState.totalNodesPlaced);
 
     ws.send(JSON.stringify(response));
   },
 
   // Handle node destruction
   node_destroyed: (ws: WebSocket, message: any) => {
-    // Decrement nodes if a node is destroyed
+    const nodeId = message.nodeId;
+    const nodeType = message.nodeType || "default";
+
+    // Skip if no ID provided
+    if (!nodeId || !gameState.nodes[nodeId]) {
+      const response: ActionConfirmedMessage = {
+        type: "action_confirmed",
+        action: "node_destroyed",
+        success: false,
+        message: "Node not found",
+      };
+      ws.send(JSON.stringify(response));
+      return;
+    }
+
+    // Update state
     if (gameState.totalNodesPlaced > 0) {
       gameState.totalNodesPlaced--;
 
-      // Update node type counts if provided
-      const nodeType = message.nodeType || "default";
       if (gameState.nodeTypes[nodeType] && gameState.nodeTypes[nodeType] > 0) {
         gameState.nodeTypes[nodeType]--;
       }
 
-      // Remove the node if ID is provided
-      if (message.nodeId && gameState.nodes[message.nodeId]) {
-        delete gameState.nodes[message.nodeId];
+      delete gameState.nodes[nodeId];
+
+      // Clear selection if the destroyed node was selected
+      if (gameState.selectedNodeId === nodeId) {
+        gameState.selectedNodeId = null;
       }
 
       gameState.lastUpdated = new Date();
@@ -131,16 +158,16 @@ const messageHandlers: { [key: string]: MessageHandler } = {
 
   // Handle node selection
   node_selected: (ws: WebSocket, message: any) => {
-    // Update the selected node in the game state
     const nodeId = message.nodeId;
 
-    if (nodeId && gameState.nodes[nodeId]) {
+    if (nodeId && (nodeId === "main_node" || gameState.nodes[nodeId])) {
       gameState.selectedNodeId = nodeId;
+      gameState.lastUpdated = new Date();
 
-      // Broadcast the updated state so all clients know which node is selected
+      // Broadcast the updated state
       broadcastGameState();
 
-      const response = {
+      const response: ActionConfirmedMessage = {
         type: "action_confirmed",
         action: "node_selected",
         success: true,
@@ -149,11 +176,11 @@ const messageHandlers: { [key: string]: MessageHandler } = {
 
       ws.send(JSON.stringify(response));
     } else {
-      // If node doesn't exist, send failure
-      const response = {
+      const response: ActionConfirmedMessage = {
         type: "action_confirmed",
         action: "node_selected",
         success: false,
+        message: "Node not found",
       };
 
       ws.send(JSON.stringify(response));
@@ -162,37 +189,31 @@ const messageHandlers: { [key: string]: MessageHandler } = {
 
   // Handle node stats updates
   node_stats_update: (ws: WebSocket, message: any) => {
-    // Handle node stats update from either game or frontend
     const nodeId = message.nodeId;
     const stats = message.stats;
 
     if (nodeId && stats && gameState.nodes[nodeId]) {
-      // Update node stats in game state
+      // Update node stats
       gameState.nodes[nodeId].stats = stats;
       gameState.lastUpdated = new Date();
 
       // Log the update
       console.log(`Updated stats for node ${nodeId}:`, stats);
 
-      // Broadcast the update to all clients
-      broadcastGameState();
-
-      // Send specific node stats update message
+      // Send specific node stats update message first
       const nodeStatsUpdateMsg = {
         type: "node_stats_update",
         nodeId: nodeId,
         stats: stats,
       };
 
-      // Broadcast to all clients (including the sender)
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(nodeStatsUpdateMsg));
-        }
-      });
+      broadcastMessage(nodeStatsUpdateMsg);
 
-      // Send success response to the sender
-      const response = {
+      // Then broadcast full state update
+      broadcastGameState();
+
+      // Send confirmation
+      const response: ActionConfirmedMessage = {
         type: "action_confirmed",
         action: "node_stats_update",
         success: true,
@@ -201,11 +222,11 @@ const messageHandlers: { [key: string]: MessageHandler } = {
 
       ws.send(JSON.stringify(response));
     } else {
-      // If node doesn't exist, send failure
-      const response = {
+      const response: ActionConfirmedMessage = {
         type: "action_confirmed",
         action: "node_stats_update",
         success: false,
+        message: "Node not found or missing stats",
       };
 
       ws.send(JSON.stringify(response));
@@ -236,31 +257,34 @@ const messageHandlers: { [key: string]: MessageHandler } = {
         node.stats = stats;
         gameState.lastUpdated = new Date();
 
-        console.log(`Node ${nodeId} stats updated from staking:`, stats);
-
-        // Broadcast the update to all clients
-        broadcastGameState();
-
-        // Send specific node stats update message
+        // Send specific update first
         const nodeStatsUpdateMsg = {
           type: "node_stats_update",
           nodeId: nodeId,
           stats: stats,
         };
 
-        // Broadcast to all clients
-        wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(nodeStatsUpdateMsg));
-          }
-        });
+        broadcastMessage(nodeStatsUpdateMsg);
 
-        // Send success response
-        const response = {
+        // Then broadcast complete state
+        broadcastGameState();
+
+        // Send confirmation
+        const response: ActionConfirmedMessage = {
           type: "action_confirmed",
           action: "stake_tokens",
           success: true,
           nodeId: nodeId,
+        };
+
+        ws.send(JSON.stringify(response));
+      } else {
+        // Node not found
+        const response: ActionConfirmedMessage = {
+          type: "action_confirmed",
+          action: "stake_tokens",
+          success: false,
+          message: "Node not found",
         };
 
         ws.send(JSON.stringify(response));
@@ -279,12 +303,9 @@ const messageHandlers: { [key: string]: MessageHandler } = {
         gameState.mainNodeHealth.currentHealth = newHealth;
         gameState.mainNodeHealth.healthPercentage = newHealth / maxHealth;
         gameState.mainNodeHealth.lastUpdated = new Date();
+        gameState.lastUpdated = new Date();
 
-        console.log(
-          `Healed main node for ${amount} health points. New health: ${newHealth}/${maxHealth}`
-        );
-
-        // Send health update to all clients
+        // Send health update
         const healthUpdateMsg = {
           type: "node_health_update",
           nodeId: "main_node",
@@ -293,15 +314,13 @@ const messageHandlers: { [key: string]: MessageHandler } = {
           healthPercentage: newHealth / maxHealth,
         };
 
-        // Broadcast to all clients
-        wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(healthUpdateMsg));
-          }
-        });
+        broadcastMessage(healthUpdateMsg);
 
-        // Send success response
-        const response = {
+        // Then broadcast complete state
+        broadcastGameState();
+
+        // Send confirmation
+        const response: ActionConfirmedMessage = {
           type: "action_confirmed",
           action: "heal_node",
           success: true,
@@ -314,30 +333,28 @@ const messageHandlers: { [key: string]: MessageHandler } = {
       else if (nodeId && gameState.nodes[nodeId]) {
         const node = gameState.nodes[nodeId];
 
+        if (!node.health) {
+          // Initialize health if missing
+          node.health = {
+            currentHealth: 100,
+            maxHealth: 100,
+            healthPercentage: 1.0,
+            lastUpdated: new Date(),
+          };
+        }
+
         // Calculate new health
-        const currentHealth = node.health?.currentHealth || 100;
-        const maxHealth = node.health?.maxHealth || 100;
+        const currentHealth = node.health.currentHealth;
+        const maxHealth = node.health.maxHealth;
         const newHealth = Math.min(currentHealth + amount, maxHealth);
 
         // Update the health
-        if (!node.health) {
-          node.health = {
-            currentHealth: newHealth,
-            maxHealth,
-            healthPercentage: newHealth / maxHealth,
-            lastUpdated: new Date(),
-          };
-        } else {
-          node.health.currentHealth = newHealth;
-          node.health.healthPercentage = newHealth / maxHealth;
-          node.health.lastUpdated = new Date();
-        }
+        node.health.currentHealth = newHealth;
+        node.health.healthPercentage = newHealth / maxHealth;
+        node.health.lastUpdated = new Date();
+        gameState.lastUpdated = new Date();
 
-        console.log(
-          `Healed node ${nodeId} for ${amount} health points. New health: ${newHealth}/${maxHealth}`
-        );
-
-        // Send health update to all clients
+        // Send health update
         const healthUpdateMsg = {
           type: "node_health_update",
           nodeId,
@@ -346,15 +363,13 @@ const messageHandlers: { [key: string]: MessageHandler } = {
           healthPercentage: newHealth / maxHealth,
         };
 
-        // Broadcast to all clients
-        wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(healthUpdateMsg));
-          }
-        });
+        broadcastMessage(healthUpdateMsg);
 
-        // Send success response
-        const response = {
+        // Then broadcast state
+        broadcastGameState();
+
+        // Send confirmation
+        const response: ActionConfirmedMessage = {
           type: "action_confirmed",
           action: "heal_node",
           success: true,
@@ -362,15 +377,33 @@ const messageHandlers: { [key: string]: MessageHandler } = {
         };
 
         ws.send(JSON.stringify(response));
+      } else {
+        // Node not found
+        const response: ActionConfirmedMessage = {
+          type: "action_confirmed",
+          action: "heal_node",
+          success: false,
+          message: "Node not found",
+        };
+
+        ws.send(JSON.stringify(response));
       }
+    } else {
+      // Unknown action
+      const response: ActionConfirmedMessage = {
+        type: "action_confirmed",
+        action: action || "unknown",
+        success: false,
+        message: "Unknown or malformed action",
+      };
+
+      ws.send(JSON.stringify(response));
     }
   },
 
   // Handle game over notifications
   game_over: (ws: WebSocket, message: any) => {
     const cause = message.cause || "unknown";
-
-    console.log(`Game over notification received. Cause: ${cause}`);
 
     // Broadcast game over to all clients
     const gameOverMsg = {
@@ -379,15 +412,10 @@ const messageHandlers: { [key: string]: MessageHandler } = {
       timestamp: new Date().toISOString(),
     };
 
-    // Broadcast to all clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(gameOverMsg));
-      }
-    });
+    broadcastMessage(gameOverMsg);
 
-    // Send success response
-    const response = {
+    // Send confirmation
+    const response: ActionConfirmedMessage = {
       type: "action_confirmed",
       action: "game_over",
       success: true,
@@ -401,21 +429,20 @@ const messageHandlers: { [key: string]: MessageHandler } = {
     const nodeId = message.nodeId;
     const currentHealth = message.currentHealth;
     const maxHealth = message.maxHealth;
-    const healthPercentage = message.healthPercentage;
+    const healthPercentage = currentHealth / maxHealth;
 
     // Special handling for main node
     if (nodeId === "main_node") {
-      // Update main node health in game state
+      // Update main node health
       gameState.mainNodeHealth = {
         currentHealth,
         maxHealth,
         healthPercentage,
         lastUpdated: new Date(),
       };
+      gameState.lastUpdated = new Date();
 
-      console.log(`Updated main node health: ${currentHealth}/${maxHealth}`);
-
-      // Broadcast the health update to all clients
+      // Send the health update
       const healthUpdateMsg = {
         type: "node_health_update",
         nodeId: "main_node",
@@ -424,37 +451,31 @@ const messageHandlers: { [key: string]: MessageHandler } = {
         healthPercentage,
       };
 
-      // Broadcast to all clients
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(healthUpdateMsg));
-        }
-      });
+      broadcastMessage(healthUpdateMsg);
+      broadcastGameState();
 
-      // Send success response
-      const response = {
+      // Send confirmation
+      const response: ActionConfirmedMessage = {
         type: "action_confirmed",
         action: "node_health_update",
         success: true,
+        nodeId: "main_node",
       };
 
       ws.send(JSON.stringify(response));
     }
-    // Handle health updates for regular nodes
+    // Handle regular nodes
     else if (nodeId && gameState.nodes[nodeId]) {
-      // Update node health in game state
+      // Update node health
       gameState.nodes[nodeId].health = {
         currentHealth,
         maxHealth,
         healthPercentage,
         lastUpdated: new Date(),
       };
+      gameState.lastUpdated = new Date();
 
-      console.log(
-        `Updated node ${nodeId} health: ${currentHealth}/${maxHealth}`
-      );
-
-      // Broadcast the health update to all clients
+      // Send the health update
       const healthUpdateMsg = {
         type: "node_health_update",
         nodeId,
@@ -463,15 +484,11 @@ const messageHandlers: { [key: string]: MessageHandler } = {
         healthPercentage,
       };
 
-      // Broadcast to all clients
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(healthUpdateMsg));
-        }
-      });
+      broadcastMessage(healthUpdateMsg);
+      broadcastGameState();
 
-      // Send success response
-      const response = {
+      // Send confirmation
+      const response: ActionConfirmedMessage = {
         type: "action_confirmed",
         action: "node_health_update",
         success: true,
@@ -480,21 +497,184 @@ const messageHandlers: { [key: string]: MessageHandler } = {
 
       ws.send(JSON.stringify(response));
     } else {
-      // If node doesn't exist, send failure
-      const response = {
+      // Node not found
+      const response: ActionConfirmedMessage = {
         type: "action_confirmed",
         action: "node_health_update",
         success: false,
+        message: "Node not found",
       };
 
       ws.send(JSON.stringify(response));
     }
   },
 
+  // Handle wave countdown
+  wave_countdown: (ws: WebSocket, message: any) => {
+    const waveNumber = message.waveNumber;
+    const countdown = message.countdown;
+    const maxWaves = message.maxWaves;
+
+    // Update game state
+    gameState.currentWave = waveNumber;
+    gameState.nextWaveCountdown = countdown;
+    gameState.maxWaves = maxWaves;
+    gameState.isCountingDown = true;
+    gameState.lastUpdated = new Date();
+
+    // Send countdown message
+    const countdownMsg = {
+      type: "wave_countdown",
+      waveNumber,
+      countdown,
+      maxWaves,
+      timestamp: new Date().toISOString(),
+    };
+
+    broadcastMessage(countdownMsg);
+    broadcastGameState();
+
+    // Send confirmation
+    const response: ActionConfirmedMessage = {
+      type: "action_confirmed",
+      action: "wave_countdown",
+      success: true,
+    };
+
+    ws.send(JSON.stringify(response));
+  },
+
+  enemy_killed: (ws: WebSocket, message: any) => {
+    const currencyEarned = message.currencyEarned || 0;
+    console.log("enemy destroyed");
+    // Update game state
+    gameState.currency = (gameState.currency || 0) + currencyEarned;
+    gameState.enemiesKilled = (gameState.enemiesKilled || 0) + 1;
+    gameState.lastUpdated = new Date();
+
+    // Send specific enemy destroyed notification
+    const enemyDestroyedMsg = {
+      type: "enemy_destroyed",
+      currencyEarned,
+      enemiesKilled: gameState.enemiesKilled,
+      currency: gameState.currency,
+      timestamp: new Date().toISOString(),
+    };
+
+    broadcastMessage(enemyDestroyedMsg);
+
+    // Also broadcast state update to ensure consistency
+    broadcastGameState();
+
+    // Send confirmation
+    const response: ActionConfirmedMessage = {
+      type: "action_confirmed",
+      action: "enemy_destroyed",
+      success: true,
+    };
+
+    ws.send(JSON.stringify(response));
+  },
+
+  wave_started: (ws: WebSocket, message: any) => {
+    const waveNumber = message.waveNumber;
+    const enemiesInWave = message.enemiesInWave;
+    const maxWaves = message.maxWaves;
+
+    // Update game state
+    gameState.currentWave = waveNumber;
+    gameState.maxWaves = maxWaves;
+    gameState.enemiesInWave = enemiesInWave;
+    gameState.isCountingDown = false;
+    gameState.lastUpdated = new Date();
+
+    // Send wave started message
+    const waveStartedMsg = {
+      type: "wave_started",
+      waveNumber,
+      enemiesInWave,
+      maxWaves,
+      timestamp: new Date().toISOString(),
+    };
+
+    broadcastMessage(waveStartedMsg);
+    broadcastGameState();
+
+    // Send confirmation
+    const response: ActionConfirmedMessage = {
+      type: "action_confirmed",
+      action: "wave_started",
+      success: true,
+    };
+
+    ws.send(JSON.stringify(response));
+  },
+
+  game_stats: (ws: WebSocket, message: any) => {
+    const currency = message.currency || 0;
+    const enemiesKilled = message.enemiesKilled || 0;
+
+    // Update game state
+    gameState.currency = currency;
+    gameState.enemiesKilled = enemiesKilled;
+    gameState.lastUpdated = new Date();
+
+    // Send game stats message
+    const gameStatsMsg = {
+      type: "game_stats",
+      currency,
+      enemiesKilled,
+      timestamp: new Date().toISOString(),
+    };
+
+    broadcastMessage(gameStatsMsg);
+    broadcastGameState();
+
+    // Send confirmation
+    const response: ActionConfirmedMessage = {
+      type: "action_confirmed",
+      action: "game_stats",
+      success: true,
+    };
+
+    ws.send(JSON.stringify(response));
+  },
+
+  game_won: (ws: WebSocket, message: any) => {
+    const reason = message.reason || "unknown";
+
+    // Send game won message
+    const gameWonMsg = {
+      type: "game_won",
+      reason,
+      timestamp: new Date().toISOString(),
+    };
+
+    broadcastMessage(gameWonMsg);
+
+    // Send confirmation
+    const response: ActionConfirmedMessage = {
+      type: "action_confirmed",
+      action: "game_won",
+      success: true,
+    };
+
+    ws.send(JSON.stringify(response));
+  },
+
   // Default handler for unrecognized message types
   text: (ws: WebSocket, message: any) => {
     if (message.content) {
       console.log("Text message received:", message.content);
+
+      // Send a simple acknowledgment
+      ws.send(
+        JSON.stringify({
+          type: "text_received",
+          success: true,
+          timestamp: new Date().toISOString(),
+        })
+      );
     }
   },
 };
@@ -520,47 +700,73 @@ wss.on("connection", function connection(ws: WebSocket) {
         message = { type: "text", content: data.toString() };
       }
 
-      console.log("Received message:", message);
+      console.log("Received message type:", message.type);
 
       // Find the appropriate handler based on message type
       const handler = messageHandlers[message.type] || messageHandlers.text;
 
       // Execute the handler
       handler(ws, message);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing message:", error);
+
+      // Send error response
+      try {
+        ws.send(
+          JSON.stringify({
+            type: "error",
+            message: "Error processing message",
+            details: error.message,
+          })
+        );
+      } catch (sendError) {
+        console.error("Error sending error response:", sendError);
+      }
     }
   });
 
   ws.on("close", () => {
     console.log("Client disconnected from WebSocket");
   });
+
+  ws.on("error", (error) => {
+    console.error("WebSocket error:", error);
+  });
 });
 
-// Check if a placement is a duplicate (same type within time window)
-function isDuplicatePlacement(nodeType: string): boolean {
-  const lastPlacement = recentPlacements.get(nodeType);
-  if (!lastPlacement) return false;
+function isDuplicateAction(actionId: string): boolean {
+  const lastAction = recentActions.get(actionId);
+  if (!lastAction) return false;
 
   const now = Date.now();
-  return now - lastPlacement < DEDUPLICATION_WINDOW_MS;
+  return now - lastAction < DEDUPLICATION_WINDOW_MS;
 }
 
-// Record a placement for deduplication
-function recordPlacement(nodeType: string): void {
-  recentPlacements.set(nodeType, Date.now());
+// Function to record an action for deduplication (to replace recordPlacement)
+function recordAction(actionId: string): void {
+  recentActions.set(actionId, Date.now());
 
   // Clean up old entries periodically
-  if (recentPlacements.size > 100) {
+  if (recentActions.size > 100) {
     const now = Date.now();
-    for (const [type, timestamp] of recentPlacements.entries()) {
+    for (const [action, timestamp] of recentActions.entries()) {
       if (now - timestamp > DEDUPLICATION_WINDOW_MS * 2) {
-        recentPlacements.delete(type);
+        recentActions.delete(action);
       }
     }
   }
 }
 
+// Function to broadcast a message to all connected clients
+function broadcastMessage(message: any): void {
+  const messageString = JSON.stringify(message);
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(messageString);
+    }
+  });
+}
 function getDefaultStats(nodeType: string): NodeStatsData {
   switch (nodeType.toLowerCase()) {
     case "validator":

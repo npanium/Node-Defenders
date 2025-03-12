@@ -277,9 +277,11 @@ public class Node : MonoBehaviour {
         return bulletSpeedBase * Mathf.Pow(level, 0.3f);
     }
 
+#if UNITY_EDITOR
     private void OnDrawGizmosSelected() {
         Handles.color = Color.cyan;
         Handles.DrawWireDisc(transform.position, transform.forward, targetingRange);
     }
+#endif
 }
 

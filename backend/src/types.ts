@@ -43,7 +43,14 @@ export interface GameState {
   nodeTypes: { [key: string]: number };
   nodes: { [key: string]: NodeInfo };
   lastUpdated: Date;
+  enemiesInWave: number;
+  enemiesKilled: number;
+  isCountingDown: boolean;
+  currency: number;
   selectedNodeId: string | null;
+  currentWave: number;
+  nextWaveCountdown: number;
+  maxWaves: number;
   mainNodeHealth: NodeHealthData;
 }
 
@@ -60,6 +67,7 @@ export interface ActionConfirmedMessage {
   success: boolean;
   newTotal?: number;
   nodeId?: string;
+  message?: string;
 }
 
 // Node placement message

@@ -16,6 +16,8 @@ public class EnemySpawner : MonoBehaviour {
     [SerializeField] private float difficultyScalingFactor = 0.75f;
     [SerializeField] private float enemiesPerSecondCap = 15f;
 
+    [SerializeField] private int maxWaves = 10;
+    [SerializeField] private float countdownTime = 15f;
 
     [Header("Events")]
     public static UnityEvent onEnemyDestroy = new UnityEvent();
@@ -26,6 +28,11 @@ public class EnemySpawner : MonoBehaviour {
     private int enemiesLeftToSpawn;
     private float eps; // Enemies per second
     private bool isSpawning = false;
+
+    public int CurrentWave => currentWave;
+    public int MaxWaves => maxWaves;
+    public float CurrentCountdown { get; private set; }
+    public bool IsCountingDown { get; private set; }
 
     private void Awake() {
         onEnemyDestroy.AddListener(onEnemyDestroyed);
@@ -55,6 +62,19 @@ public class EnemySpawner : MonoBehaviour {
         isSpawning = false;
         timeSinceLastSpawn = 0f;
         currentWave++;
+
+        // Check if we've reached max waves
+        if (currentWave > maxWaves) {
+            // Game complete!
+            if (WsClient.Instance != null) {
+                WsClient.Instance.NotifyGameWon("max_waves_completed");
+            }
+
+            // You could trigger a "victory" screen here
+            Debug.Log("Game Won! All waves completed!");
+            return;
+        }
+
         StartCoroutine(StartWave());
 
     }
@@ -67,14 +87,39 @@ public class EnemySpawner : MonoBehaviour {
 
     private void onEnemyDestroyed() {
         enemiesAlive--;
+        LevelManager.main.IncrementEnemiesKilled();
     }
 
     private IEnumerator StartWave() {
-        yield return new WaitForSeconds(timeBetweenWaves);
+        IsCountingDown = true;
+        CurrentCountdown = countdownTime;
 
+        // Broadcast wave countdown start through WebSocket
+        if (WsClient.Instance != null) {
+            // When sending wave countdown info
+            WsClient.Instance.NotifyWaveCountdown(currentWave, countdownTime, maxWaves);
+        }
+
+        // Count down
+        while (CurrentCountdown > 0) {
+            yield return new WaitForSeconds(1f);
+            CurrentCountdown--;
+
+            // Send countdown update each second
+            if (WsClient.Instance != null) {
+                WsClient.Instance.NotifyWaveCountdown(currentWave, CurrentCountdown, maxWaves);
+            }
+        }
+
+        IsCountingDown = false;
         isSpawning = true;
         enemiesLeftToSpawn = EnemiesPerWave();
         eps = EnemiesPerSecond();
+
+        if (WsClient.Instance != null) {
+            WsClient.Instance.NotifyWaveStarted(currentWave, enemiesLeftToSpawn + enemiesAlive, maxWaves);
+        }
+
     }
 
     private int EnemiesPerWave() {

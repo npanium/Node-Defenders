@@ -15,6 +15,7 @@ public class LevelManager : MonoBehaviour {
     public int currency;
     public int playerHealth { get; private set; }
     public int maxPlayerHealth { get; private set; }
+    public int enemiesKilled { get; private set; }
 
     private WsClient wsClient;
 
@@ -79,18 +80,6 @@ public class LevelManager : MonoBehaviour {
         currency += amount;
         Debug.Log($"Currency increased by {amount}, now: {currency}");
 
-        if (wsClient != null) {
-            CurrencyUpdateMessage msg = new CurrencyUpdateMessage {
-                type = "currency_update",
-                amount = amount,
-                operation = "increase",
-                balance = currency,
-                timestamp = DateTime.UtcNow.ToString("o")
-            };
-
-            string json = JsonUtility.ToJson(msg);
-            wsClient.SendWebSocketMessage(json);
-        }
     }
 
     // Spend currency
@@ -119,7 +108,21 @@ public class LevelManager : MonoBehaviour {
         }
     }
 
-    // Send complete game state
+    public void IncrementEnemiesKilled() {
+        enemiesKilled++;
+
+        if (wsClient != null) {
+            EnemyKilledMessage msg = new EnemyKilledMessage {
+                type = "enemy_killed",
+                enemiesKilled = enemiesKilled,
+                timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            string json = JsonUtility.ToJson(msg);
+            wsClient.SendWebSocketMessage(json);
+        }
+    }
+
     public void SendGameStateUpdate() {
         if (wsClient != null) {
             GameStateUpdateMessage msg = new GameStateUpdateMessage {
@@ -127,6 +130,7 @@ public class LevelManager : MonoBehaviour {
                 currency = currency,
                 health = playerHealth,
                 maxHealth = maxPlayerHealth,
+                enemiesKilled = enemiesKilled,
                 timestamp = DateTime.UtcNow.ToString("o")
             };
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Heart, HeartCrack, Skull } from "lucide-react";
+import { Coins, Heart, HeartCrack, Skull, Trophy } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { CyberPanel } from "./cyberpunk/CyberPanel";
 import { chakra } from "@/lib/fonts";
@@ -33,30 +33,21 @@ export function GameControlCard() {
   const [nextWaveTimer, setNextWaveTimer] = useState<string>("");
   const [isYieldFrenzy, setIsYieldFrenzy] = useState(false);
 
-  // Use our socket hook to get real-time updates
-  const { isConnected, gameState, gameOver, getMainNodeHealth } = useSocket();
+  const {
+    isConnected,
+    gameState,
+    gameOver,
+    gameWon,
+    waveInfo,
+    gameStats,
+    healNode,
+    getMainNodeHealth,
+    resetGameWon,
+  } = useSocket();
 
-  // Get main node health data from the socket
   const mainNodeHealth = getMainNodeHealth();
   const healthPercentage = Math.round(mainNodeHealth.healthPercentage * 100);
 
-  // Function to format date
-  const formatDate = (dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch (err) {
-      return "Invalid date";
-    }
-  };
-
-  // Calculate time elapsed
   useEffect(() => {
     if (!pool?.lastUpdated) return;
 
@@ -84,31 +75,49 @@ export function GameControlCard() {
   }, [pool?.lastUpdated]);
 
   // Calculate next wave countdown
-  useEffect(() => {
-    if (pool?.nextWaveCountdown === undefined) return;
+  // useEffect(() => {
+  //   if (pool?.nextWaveCountdown === undefined) return;
 
-    const updateWaveCountdown = () => {
-      let countdown = Math.max(0, pool.nextWaveCountdown - 1);
+  //   const updateWaveCountdown = () => {
+  //     let countdown = Math.max(0, pool.nextWaveCountdown - 1);
+
+  //     // Check for Yield Frenzy (every 5 waves)
+  //     if (pool.currentWave > 0 && pool.currentWave % 5 === 0) {
+  //       setIsYieldFrenzy(true);
+  //     } else {
+  //       setIsYieldFrenzy(false);
+  //     }
+
+  //     const minutes = Math.floor(countdown / 60);
+  //     const seconds = countdown % 60;
+  //     // setNextWaveTimer(`${minutes}:${seconds.toString().padStart(2, "0")}`);
+
+  //     setPool((prev) =>
+  //       prev ? { ...prev, nextWaveCountdown: countdown } : null
+  //     );
+  //   };
+
+  //   const interval = setInterval(updateWaveCountdown, 1000);
+  //   return () => clearInterval(interval);
+  // }, [pool?.nextWaveCountdown, pool?.currentWave]);
+
+  useEffect(() => {
+    if (waveInfo.isCountingDown) {
+      // Update countdown display from socket data
+      const minutes = Math.floor(waveInfo.countdown / 60);
+      const seconds = Math.floor(waveInfo.countdown % 60);
+      setNextWaveTimer(`${minutes}:${seconds.toString().padStart(2, "0")}`);
 
       // Check for Yield Frenzy (every 5 waves)
-      if (pool.currentWave > 0 && pool.currentWave % 5 === 0) {
+      if (waveInfo.currentWave > 0 && waveInfo.currentWave % 5 === 0) {
         setIsYieldFrenzy(true);
       } else {
         setIsYieldFrenzy(false);
       }
-
-      const minutes = Math.floor(countdown / 60);
-      const seconds = countdown % 60;
-      setNextWaveTimer(`${minutes}:${seconds.toString().padStart(2, "0")}`);
-
-      setPool((prev) =>
-        prev ? { ...prev, nextWaveCountdown: countdown } : null
-      );
-    };
-
-    const interval = setInterval(updateWaveCountdown, 1000);
-    return () => clearInterval(interval);
-  }, [pool?.nextWaveCountdown, pool?.currentWave]);
+    } else if (waveInfo.isWaveInProgress) {
+      setNextWaveTimer("In Progress");
+    }
+  }, [waveInfo]);
 
   // Function to fetch data
   const fetchPoolData = async () => {
@@ -242,18 +251,6 @@ export function GameControlCard() {
             }`}
           />
         </div>
-
-        {/* <Button
-          onClick={handleHealMainNode}
-          className="mt-2 w-full"
-          variant="outline"
-          disabled={!isConnected || healthPercentage >= 100}
-        >
-          <Heart className="mr-2 h-4 w-4" />
-          Heal Main Node (+10)
-        </Button> */}
-
-        {/* Connection status */}
         <div className="mt-2 text-xs flex items-center">
           <div
             className={`w-2 h-2 rounded-full mr-2 ${
@@ -262,7 +259,26 @@ export function GameControlCard() {
           ></div>
           <span>{isConnected ? "Connected to game" : "Disconnected"}</span>
         </div>
-
+        <span className="text-muted-foreground">Wave:</span>{" "}
+        <span className="font-bold">{waveInfo.currentWave}</span>
+        {/* Stats section */}
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <div className="flex items-center p-2 bg-primary/5 rounded-lg border border-primary/20">
+            <Coins className="h-5 w-5 text-amber-500 mr-2" />
+            <div>
+              <p className="text-xs text-muted-foreground">Currency</p>
+              <p className="text-sm font-bold">{gameStats.currency}</p>
+            </div>
+          </div>
+          <div className="flex items-center p-2 bg-primary/5 rounded-lg border border-primary/20">
+            <Skull className="h-5 w-5 text-rose-500 mr-2" />
+            <div>
+              <p className="text-xs text-muted-foreground">Enemies Killed</p>
+              <p className="text-sm font-bold">{gameStats.enemiesKilled}</p>
+            </div>
+          </div>
+        </div>
+        {/* Stats end */}
         <FancyCyberpunkCard
           className={`rounded-lg my-6 p-3 flex items-center justify-between border border-rose-500 ${
             isYieldFrenzy ? "bg-amber-100 dark:bg-amber-950/20" : "bg-primary/5"
@@ -280,7 +296,11 @@ export function GameControlCard() {
               <div>
                 <p className="text-sm font-medium">Next Wave</p>
                 <p className="text-xs text-muted-foreground">
-                  Prepare your defenses
+                  {waveInfo.isCountingDown
+                    ? "Prepare your defenses"
+                    : waveInfo.isWaveInProgress
+                    ? `Fighting ${waveInfo.enemiesInWave} enemies`
+                    : "Wave completed"}
                 </p>
               </div>
             </div>
@@ -293,7 +313,7 @@ export function GameControlCard() {
             </div>
           </div>
         </FancyCyberpunkCard>
-
+        {/* Game over display */}
         {/* Game over display */}
         {gameOver.isOver && (
           <div className="mt-4 p-4 border border-red-500 bg-red-500/10 rounded-lg">
@@ -302,6 +322,23 @@ export function GameControlCard() {
               <h3 className="text-lg font-bold text-red-500">Game Over</h3>
             </div>
             <p className="text-sm">{gameOver.cause}</p>
+          </div>
+        )}
+        {/* Game won display */}
+        {gameWon.isWon && (
+          <div className="mt-4 p-4 border border-green-500 bg-green-500/10 rounded-lg">
+            <div className="flex items-center mb-2">
+              <Trophy className="text-green-500 mr-2 h-6 w-6" />
+              <h3 className="text-lg font-bold text-green-500">Victory!</h3>
+            </div>
+            <p className="text-sm">All {waveInfo.maxWaves} waves completed!</p>
+            <Button
+              className="mt-2 w-full"
+              variant="outline"
+              onClick={resetGameWon}
+            >
+              Play Again
+            </Button>
           </div>
         )}
       </CyberPanel>
