@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using System;
+using UnityEngine.SceneManagement;
 
 public class MainNodeHealth : MonoBehaviour {
     [Header("Health Settings")]
@@ -144,8 +145,9 @@ public class MainNodeHealth : MonoBehaviour {
             }
         }
 
-        // Optionally pause the game
+
         Time.timeScale = 0;
+        SceneManager.LoadScene(2);
     }
 
     public void Heal(int amount) {

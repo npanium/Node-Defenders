@@ -25,7 +25,7 @@ public class LevelManager : MonoBehaviour {
 
     private void Start() {
         // Set initial currency
-        currency = 100;
+        currency = 50;
 
         if (mainNode == null) {
             GameObject mainNodeObj = GameObject.FindGameObjectWithTag("MainNode");
@@ -79,6 +79,19 @@ public class LevelManager : MonoBehaviour {
     public void IncreaseCurrency(int amount) {
         currency += amount;
         Debug.Log($"Currency increased by {amount}, now: {currency}");
+
+        if (wsClient != null) {
+            CurrencyUpdateMessage msg = new CurrencyUpdateMessage {
+                type = "currency_update",
+                amount = amount,
+                operation = "decrease",
+                balance = currency,
+                timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            string json = JsonUtility.ToJson(msg);
+            wsClient.SendWebSocketMessage(json);
+        }
 
     }
 

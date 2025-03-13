@@ -405,6 +405,7 @@ const messageHandlers: { [key: string]: MessageHandler } = {
   game_over: (ws: WebSocket, message: any) => {
     const cause = message.cause || "unknown";
 
+    console.log(`[GameOver] Game over cause: ${cause}`);
     // Broadcast game over to all clients
     const gameOverMsg = {
       type: "game_over",
@@ -507,6 +508,53 @@ const messageHandlers: { [key: string]: MessageHandler } = {
 
       ws.send(JSON.stringify(response));
     }
+  },
+
+  currency_update: (ws: WebSocket, message: any) => {
+    const amount = message.amount || 0;
+    const operation = message.operation || "unknown";
+    const balance = message.balance;
+
+    // Update game state with the new balance from the client
+    if (balance !== undefined) {
+      gameState.currency = balance;
+      gameState.lastUpdated = new Date();
+    } else if (operation === "decrease" && amount) {
+      // Fallback behavior if balance not provided
+      gameState.currency = Math.max(0, (gameState.currency || 0) - amount);
+      gameState.lastUpdated = new Date();
+    } else if (operation === "increase" && amount) {
+      // Fallback behavior if balance not provided
+      gameState.currency = (gameState.currency || 0) + amount;
+      gameState.lastUpdated = new Date();
+    }
+
+    console.log(
+      `Currency ${operation}: ${amount}, new balance: ${gameState.currency}`
+    );
+
+    // Send a currency update message
+    const currencyUpdateMsg = {
+      type: "currency_update",
+      amount,
+      operation,
+      balance: gameState.currency,
+      timestamp: new Date().toISOString(),
+    };
+
+    broadcastMessage(currencyUpdateMsg);
+
+    // Also update the full game state
+    broadcastGameState();
+
+    // Send confirmation
+    const response: ActionConfirmedMessage = {
+      type: "action_confirmed",
+      action: "currency_update",
+      success: true,
+    };
+
+    ws.send(JSON.stringify(response));
   },
 
   // Handle wave countdown
@@ -619,6 +667,7 @@ const messageHandlers: { [key: string]: MessageHandler } = {
     gameState.enemiesKilled = enemiesKilled;
     gameState.lastUpdated = new Date();
 
+    console.log(`[GameStats currency]: ${currency}`);
     // Send game stats message
     const gameStatsMsg = {
       type: "game_stats",
