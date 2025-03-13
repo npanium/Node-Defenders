@@ -24,7 +24,9 @@ public class LevelManager : MonoBehaviour {
     }
 
     private void Start() {
-        // Set initial currency
+        wsClient = WsClient.Instance;
+        ResetGame();
+
         currency = 50;
 
         if (mainNode == null) {
@@ -38,19 +40,51 @@ public class LevelManager : MonoBehaviour {
 
         MainNodeHealth.OnHealthChanged += UpdatePlayerHealth;
 
-        wsClient = WsClient.Instance;
         if (wsClient == null) {
             wsClient = FindObjectOfType<WsClient>();
         }
 
-        if (wsClient != null) {
-            Debug.Log("LevelManager: WsClient reference obtained");
 
-            // Send initial game state
+        if (wsClient != null) {
+
             SendGameStateUpdate();
         } else {
             Debug.LogWarning("LevelManager: Failed to get WsClient reference");
         }
+    }
+
+    public void ResetGame() {
+        // Reset local game state
+        currency = 50;
+        enemiesKilled = 0;
+
+        // Find and reset any active state
+        // MainNodeHealth mainHealth = FindObjectOfType<MainNodeHealth>();
+        // if (mainHealth != null) {
+        //     mainHealth.ResetHealth();
+        // }
+
+        // Clear any active nodes
+        // Plot[] plots = FindObjectsOfType<Plot>();
+        // foreach (Plot plot in plots) {
+        //     if (plot.node != null) {
+        //         Destroy(plot.node.gameObject);
+        //         plot.ClearNode();
+        //     }
+        // }
+
+        // Notify the server about the reset
+        if (wsClient != null) {
+            GameResetMessage msg = new GameResetMessage {
+                type = "game_reset",
+                timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            string json = JsonUtility.ToJson(msg);
+            wsClient.SendWebSocketMessage(json);
+        }
+
+        Debug.Log("Game reset requested");
     }
 
     private void OnDestroy() {

@@ -711,6 +711,51 @@ const messageHandlers: { [key: string]: MessageHandler } = {
     ws.send(JSON.stringify(response));
   },
 
+  // Add this to your messageHandlers object
+  game_reset: (ws: WebSocket, message: any) => {
+    console.log("Game reset requested");
+
+    // Reset the game state to initial values
+    gameState.totalNodesPlaced = 0;
+    gameState.nodeTypes = {};
+    gameState.nodes = {};
+    gameState.enemiesInWave = 0;
+    gameState.enemiesKilled = 0;
+    gameState.isCountingDown = false;
+    gameState.currency = 0;
+    gameState.selectedNodeId = null;
+    gameState.currentWave = 1;
+    gameState.nextWaveCountdown = 15;
+    gameState.maxWaves = 20;
+    gameState.mainNodeHealth = {
+      currentHealth: 100,
+      maxHealth: 100,
+      healthPercentage: 1.0,
+      lastUpdated: new Date(),
+    };
+    gameState.lastUpdated = new Date();
+
+    // Broadcast reset state to all clients
+    const resetMsg = {
+      type: "game_reset",
+      timestamp: new Date().toISOString(),
+    };
+
+    broadcastMessage(resetMsg);
+
+    // Also broadcast the full reset game state
+    broadcastGameState();
+
+    // Send confirmation
+    const response: ActionConfirmedMessage = {
+      type: "action_confirmed",
+      action: "game_reset",
+      success: true,
+    };
+
+    ws.send(JSON.stringify(response));
+  },
+
   // Default handler for unrecognized message types
   text: (ws: WebSocket, message: any) => {
     if (message.content) {

@@ -147,3 +147,9 @@ public class EnemyKilledMessage : ServerMessage {
     public int enemiesKilled;
     public string timestamp;
 }
+
+[Serializable]
+public class GameResetMessage {
+    public string type;
+    public string timestamp;
+}

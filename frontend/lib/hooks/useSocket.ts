@@ -318,6 +318,56 @@ export default function useSocket(gameId: string = "player1") {
         });
         break;
 
+      case "game_reset":
+        console.log("Game reset received from server");
+
+        // Reset all game state to defaults
+        setGameState({
+          currency: 100,
+          score: 0,
+          enemiesKilled: 0,
+          turretsPlaced: 0,
+          liquidityPools: [],
+          totalNodesPlaced: 0,
+          nodeTypes: {},
+          lastUpdated: new Date(),
+          nodes: {},
+          selectedNodeId: null,
+          mainNodeHealth: {
+            currentHealth: 100,
+            maxHealth: 100,
+            healthPercentage: 1.0,
+            lastUpdated: new Date(),
+          },
+        });
+
+        // Reset other state
+        setGameStats({
+          currency: 100,
+          enemiesKilled: 0,
+        });
+
+        setWaveInfo({
+          currentWave: 1,
+          maxWaves: 20,
+          countdown: 0,
+          enemiesInWave: 0,
+          isCountingDown: false,
+          isWaveInProgress: false,
+        });
+
+        setGameOver({
+          isOver: false,
+          cause: "",
+        });
+
+        setGameWon({
+          isWon: false,
+          reason: "",
+        });
+
+        break;
+
       default:
         console.log(`Unhandled message type: ${messageType}`, data);
     }
@@ -480,6 +530,58 @@ export default function useSocket(gameId: string = "player1") {
     });
   }, []);
 
+  const resetGame = useCallback(() => {
+    if (isConnected) {
+      sendMessage({
+        type: "game_reset",
+        timestamp: new Date().toISOString(),
+      });
+
+      setGameState({
+        currency: 0,
+        score: 0,
+        enemiesKilled: 0,
+        turretsPlaced: 0,
+        liquidityPools: [],
+        totalNodesPlaced: 0,
+        nodeTypes: {},
+        lastUpdated: new Date(),
+        nodes: {},
+        selectedNodeId: null,
+        mainNodeHealth: {
+          currentHealth: 100,
+          maxHealth: 100,
+          healthPercentage: 1.0,
+          lastUpdated: new Date(),
+        },
+      });
+
+      setGameStats({
+        currency: 100,
+        enemiesKilled: 0,
+      });
+
+      setWaveInfo({
+        currentWave: 1,
+        maxWaves: 20,
+        countdown: 0,
+        enemiesInWave: 0,
+        isCountingDown: false,
+        isWaveInProgress: false,
+      });
+
+      setGameOver({
+        isOver: false,
+        cause: "",
+      });
+
+      setGameWon({
+        isWon: false,
+        reason: "",
+      });
+    }
+  }, [isConnected, sendMessage]);
+
   return {
     isConnected,
     gameState,
@@ -497,5 +599,6 @@ export default function useSocket(gameId: string = "player1") {
     gameWon,
     gameStats,
     resetGameWon,
+    resetGame,
   };
 }
