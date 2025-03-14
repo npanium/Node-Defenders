@@ -19,13 +19,6 @@ export default function Home() {
   // State for game controls
   const [gameStarted, setGameStarted] = useState(false);
   const [roundOngoing, setRoundOngoing] = useState(false);
-  const [useMockData, setUseMockData] = useState(true);
-
-  // Simulate sound toggle
-  const [soundEnabled, setSoundEnabled] = useState(true);
-
-  // Simulate player balance
-  const [playerBalance, setPlayerBalance] = useState(1200.99);
 
   // Toggle game state
   const toggleGame = () => {
@@ -128,69 +121,25 @@ export default function Home() {
 
           {/* Center - Game area */}
           <div className="md:col-span-6">
-            <Card className="bg-slate-900/60 backdrop-blur-sm border-indigo-500/30 shadow-lg shadow-indigo-900/20 h-[500px] flex flex-col">
-              <CardHeader className="border-b border-indigo-500/20 pb-3">
-                <h2 className="text-xl font-semibold text-cyan-300">
-                  Node Defenders Game
-                </h2>
-              </CardHeader>
-              <CardContent className="flex-1 p-0 relative">
-                {/* Unity Game Component */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {gameStarted ? (
-                    <UnityGameComponent />
-                  ) : (
-                    <div className="text-center">
-                      <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-indigo-900/50 flex items-center justify-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="48"
-                          height="48"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="text-cyan-400"
-                        >
-                          <path d="m5 5 14 14"></path>
-                          <path d="m19 5-14 14"></path>
-                        </svg>
-                      </div>
-                      <h3 className="text-xl font-semibold text-indigo-300 mb-2">
-                        Game Inactive
-                      </h3>
-                      <p className="text-gray-400 mb-4">
-                        Start the game to begin playing
-                      </p>
-                      <Button
-                        onClick={toggleGame}
-                        className="bg-indigo-600 hover:bg-indigo-500 border-indigo-500/50 shadow-indigo-600/30 rounded-lg text-white font-medium transition-all shadow-lg border"
-                      >
-                        Launch Game
-                      </Button>
-                    </div>
-                  )}
-                </div>
+            <div className="bg-slate-900/60 backdrop-blur-sm border border-indigo-500 shadow-lg shadow-indigo-900/20 h-[80vh] flex flex-col rounded-xl overflow-hidden">
+              <UnityGameComponent />
 
-                {/* Blur overlay for round ongoing */}
-                {gameStarted && roundOngoing && (
-                  <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-10">
-                    <div className="text-center">
-                      <div className="inline-block py-3 px-6 bg-indigo-600/80 rounded-lg border border-indigo-400/30 shadow-lg shadow-indigo-600/30 mb-4">
-                        <span className="text-2xl font-bold text-white">
-                          Round Ongoing
-                        </span>
-                      </div>
-                      <p className="text-cyan-300">
-                        Please wait until the current round is complete
-                      </p>
+              {/* Blur overlay for round ongoing */}
+              {gameStarted && roundOngoing && (
+                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-10">
+                  <div className="text-center">
+                    <div className="inline-block py-3 px-6 bg-indigo-600/80 rounded-lg border border-indigo-400/30 shadow-lg shadow-indigo-600/30 mb-4">
+                      <span className="text-2xl font-bold text-white">
+                        Round Ongoing
+                      </span>
                     </div>
+                    <p className="text-cyan-300">
+                      Please wait until the current round is complete
+                    </p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right sidebar - Leaderboard */}

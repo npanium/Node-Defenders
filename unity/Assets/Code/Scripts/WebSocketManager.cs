@@ -1,8 +1,9 @@
 using UnityEngine;
-using WebSocketSharp;
+// using WebSocketSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using NativeWebSocket;
 
 public class WsClient : MonoBehaviour {
     private WebSocket ws;
@@ -58,46 +59,56 @@ public class WsClient : MonoBehaviour {
     }
 
     private void Update() {
-        // Process any queued messages on the main thread
+        // Process messages on main thread
         ProcessQueuedMessages();
+
+        // Required for WebSocket to work properly in Unity
+#if !UNITY_WEBGL || UNITY_EDITOR
+        if (ws != null) {
+            ws.DispatchMessageQueue();
+        }
+#endif
     }
 
-    private void ConnectToServer() {
+    private async void ConnectToServer() {
+
+        // #if UNITY_WEBGL && !UNITY_EDITOR
+        //         Debug.Log("WebSocket connection skipped in WebGL build");
+        //         return;
+        // #endif
+
         ws = new WebSocket("ws://localhost:4000");
 
-        ws.OnOpen += (sender, e) => {
+        ws.OnOpen += () => {
             Debug.Log("WebSocket connection established");
         };
 
-        ws.OnMessage += (sender, e) => {
-            try {
-                if (e.IsText) {
-                    // Instead of processing immediately, queue the message
-                    // to be processed on the main thread
-                    messageQueue.Enqueue(e.Data);
-                    Debug.Log("Message received and queued: " + e.Data);
-                } else {
-                    Debug.Log("Binary message received");
-                }
-            } catch (Exception ex) {
-                Debug.LogError("Error in WebSocket message handler: " + ex.Message);
-            }
+        ws.OnMessage += (bytes) => {
+            // Convert bytes to string
+            string message = System.Text.Encoding.UTF8.GetString(bytes);
+            // Queue the message for processing on main thread
+            messageQueue.Enqueue(message);
+            Debug.Log("Message received and queued: " + message);
         };
 
-        ws.OnError += (sender, e) => {
-            Debug.LogError("WebSocket Error: " + e.Message);
+        ws.OnError += (e) => {
+            Debug.LogError("WebSocket Error: " + e);
         };
 
-        ws.OnClose += (sender, e) => {
-            Debug.Log("WebSocket connection closed: " + e.Reason);
+        ws.OnClose += (e) => {
+            Debug.Log("WebSocket connection closed: " + e);
         };
 
-        ws.Connect();
+        try {
+            await ws.Connect();
+        } catch (Exception e) {
+            Debug.LogError($"Failed to connect to WebSocket: {e.Message}");
+        }
     }
 
     // Check if the WebSocket is connected
     public bool IsConnected() {
-        return ws != null && ws.ReadyState == WebSocketState.Open;
+        return ws != null && ws.State == WebSocketState.Open;
     }
 
     private void ProcessQueuedMessages() {
@@ -274,8 +285,8 @@ public class WsClient : MonoBehaviour {
         }
     }
 
-    public void NotifyNodePlaced(string nodeType = "default") {
-        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+    public async void NotifyNodePlaced(string nodeType = "default") {
+        if (ws == null || ws.State != WebSocketState.Open) {
             Debug.LogWarning("WebSocket is not connected. Cannot send node placed notification.");
             return;
         }
@@ -289,15 +300,15 @@ public class WsClient : MonoBehaviour {
             };
 
             string json = JsonUtility.ToJson(msg);
-            ws.Send(json);
+            await ws.SendText(json);
             Debug.Log($"Sent node placed notification for node type: {nodeType}");
         } catch (Exception ex) {
             Debug.LogError($"Error sending node placed notification: {ex.Message}");
         }
     }
 
-    public void NotifyNodeDestroyed(string nodeType = "default", string nodeId = null) {
-        if (ws != null && ws.ReadyState == WebSocketState.Open) {
+    public async void NotifyNodeDestroyed(string nodeType = "default", string nodeId = null) {
+        if (ws != null && ws.State == WebSocketState.Open) {
             NodeDestroyedMessage msg = new NodeDestroyedMessage {
                 type = "node_destroyed",
                 nodeType = nodeType,
@@ -306,12 +317,12 @@ public class WsClient : MonoBehaviour {
             };
 
             string json = JsonUtility.ToJson(msg);
-            ws.Send(json);
+            await ws.SendText(json);
         }
     }
 
-    public void NotifyEnemyDestroyed(int currencyEarned) {
-        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+    public async void NotifyEnemyDestroyed(int currencyEarned) {
+        if (ws == null || ws.State != WebSocketState.Open) {
             Debug.LogWarning("WebSocket is not connected. Cannot send enemy destroyed notification.");
             return;
         }
@@ -325,15 +336,15 @@ public class WsClient : MonoBehaviour {
             };
 
             string json = JsonUtility.ToJson(msg);
-            ws.Send(json);
+            await ws.SendText(json);
             Debug.Log($"Sent enemy destroyed notification with currency earned: {currencyEarned}");
         } catch (Exception ex) {
             Debug.LogError($"Error sending enemy destroyed notification: {ex.Message}");
         }
     }
 
-    public void NotifyGameStats(int currency, int enemiesKilled) {
-        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+    public async void NotifyGameStats(int currency, int enemiesKilled) {
+        if (ws == null || ws.State != WebSocketState.Open) {
             Debug.LogWarning("WebSocket is not connected. Cannot send game stats.");
             return;
         }
@@ -348,15 +359,15 @@ public class WsClient : MonoBehaviour {
             };
 
             string json = JsonUtility.ToJson(msg);
-            ws.Send(json);
+            await ws.SendText(json);
             Debug.Log($"Sent game stats: Currency {currency}, Enemies killed {enemiesKilled}");
         } catch (Exception ex) {
             Debug.LogError($"Error sending game stats: {ex.Message}");
         }
     }
 
-    public void NotifyWaveCountdown(int waveNumber, float countdown, int maxWaves) {
-        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+    public async void NotifyWaveCountdown(int waveNumber, float countdown, int maxWaves) {
+        if (ws == null || ws.State != WebSocketState.Open) {
             Debug.LogWarning("WebSocket is not connected. Cannot send wave countdown.");
             return;
         }
@@ -372,15 +383,15 @@ public class WsClient : MonoBehaviour {
             };
 
             string json = JsonUtility.ToJson(msg);
-            ws.Send(json);
+            await ws.SendText(json);
             Debug.Log($"Sent wave countdown: Wave {waveNumber}, Countdown {countdown}s");
         } catch (Exception ex) {
             Debug.LogError($"Error sending wave countdown: {ex.Message}");
         }
     }
 
-    public void NotifyWaveStarted(int waveNumber, int enemiesInWave, int maxWaves) {
-        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+    public async void NotifyWaveStarted(int waveNumber, int enemiesInWave, int maxWaves) {
+        if (ws == null || ws.State != WebSocketState.Open) {
             Debug.LogWarning("WebSocket is not connected. Cannot send wave started notification.");
             return;
         }
@@ -396,15 +407,15 @@ public class WsClient : MonoBehaviour {
             };
 
             string json = JsonUtility.ToJson(msg);
-            ws.Send(json);
+            await ws.SendText(json);
             Debug.Log($"Sent wave started: Wave {waveNumber}/{maxWaves}, Enemies: {enemiesInWave}");
         } catch (Exception ex) {
             Debug.LogError($"Error sending wave started notification: {ex.Message}");
         }
     }
 
-    public void NotifyGameWon(string reason) {
-        if (ws == null || ws.ReadyState != WebSocketState.Open) {
+    public async void NotifyGameWon(string reason) {
+        if (ws == null || ws.State != WebSocketState.Open) {
             Debug.LogWarning("WebSocket is not connected. Cannot send game won notification.");
             return;
         }
@@ -418,7 +429,7 @@ public class WsClient : MonoBehaviour {
             };
 
             string json = JsonUtility.ToJson(msg);
-            ws.Send(json);
+            await ws.SendText(json);
             Debug.Log($"Sent game won notification. Reason: {reason}");
         } catch (Exception ex) {
             Debug.LogError($"Error sending game won notification: {ex.Message}");
@@ -426,32 +437,36 @@ public class WsClient : MonoBehaviour {
     }
 
     // Method to select a node
-    public void SelectNode(string nodeId) {
-        if (ws != null && ws.ReadyState == WebSocketState.Open) {
+    public async void SelectNode(string nodeId) {
+        if (ws != null) {
             NodeSelectedMessage msg = new NodeSelectedMessage {
                 type = "node_selected",
                 nodeId = nodeId
             };
 
             string json = JsonUtility.ToJson(msg);
-            ws.Send(json);
+            await ws.SendText(json);
             Debug.Log($"Sent node selection request for node: {nodeId}");
         }
     }
 
     // Public method to send text messages (legacy support)
-    public void SendWebSocketMessage(string message) {
-        if (ws != null && ws.ReadyState == WebSocketState.Open) {
-            ws.Send(message);
-            Debug.Log("Sent message: " + message);
+    public async void SendWebSocketMessage(string message) {
+        if (IsConnected()) {
+            try {
+                await ws.SendText(message);
+                Debug.Log("Sent message: " + message);
+            } catch (Exception ex) {
+                Debug.LogError($"Error sending WebSocket message: {ex.Message}");
+            }
         } else {
             Debug.LogWarning("WebSocket is not connected. Cannot send message.");
         }
     }
 
-    private void OnDestroy() {
-        if (ws != null && ws.ReadyState == WebSocketState.Open) {
-            ws.Close();
+    private async void OnDestroy() {
+        if (ws != null) {
+            await ws.Close();
         }
     }
 }
