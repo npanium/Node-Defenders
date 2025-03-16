@@ -277,7 +277,7 @@ const NodePoolManager: React.FC = () => {
                         <span
                           className={`text-${nodeInfo.color}-300 font-medium`}
                         >
-                          {nodeInfo.title} #{node.id.substring(0, 4)}
+                          {nodeInfo.title} #{node.id.split("_")[2]}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
@@ -299,6 +299,14 @@ const NodePoolManager: React.FC = () => {
                   <AccordionContent className="p-2">
                     <div className="relative">
                       <NodePool
+                        godsTokenAddress={
+                          process.env.NEXT_PUBLIC_GODS_TOKEN_ADDRESS ||
+                          "0x0000000000000000000000000000000000000000"
+                        }
+                        soulTokenAddress={
+                          process.env.NEXT_PUBLIC_SOUL_TOKEN_ADDRESS ||
+                          "0x0000000000000000000000000000000000000000"
+                        }
                         nodeId={node.id}
                         nodeType={node.type}
                         poolSize={node.poolSize}

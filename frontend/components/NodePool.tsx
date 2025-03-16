@@ -7,6 +7,12 @@ import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CyberpunkNeonButton from "./cyberpunk/CyberpunkNeonButton";
 import useSocket from "@/lib/hooks/useSocket";
+import {
+  useAccount,
+  useContractRead,
+  useReadContract,
+  useWatchContractEvent,
+} from "wagmi";
 
 export type NodeType = "validator" | "harvester" | "defender" | "attacker";
 
@@ -31,6 +37,9 @@ interface NodePoolCardProps {
   onStake: (tokenType: "gods" | "soul", amount: number) => void;
   onUnstake: (tokenType: "gods" | "soul", amount: number) => void;
   className?: string;
+  // Token contract addresses
+  godsTokenAddress: string;
+  soulTokenAddress: string;
 }
 
 const nodeTypeInfo = {
@@ -64,6 +73,39 @@ const nodeTypeInfo = {
   },
 };
 
+// Minimal ERC20 ABI for balanceOf and Transfer event
+const erc20ABI = [
+  {
+    constant: true,
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        name: "from",
+        type: "address",
+      },
+      {
+        indexed: true,
+        name: "to",
+        type: "address",
+      },
+      {
+        indexed: false,
+        name: "value",
+        type: "uint256",
+      },
+    ],
+    name: "Transfer",
+    type: "event",
+  },
+];
+
 export const NodePool: React.FC<NodePoolCardProps> = ({
   nodeId,
   nodeType,
@@ -73,6 +115,8 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
   onStake,
   onUnstake,
   className,
+  godsTokenAddress,
+  soulTokenAddress,
 }) => {
   const [stakeAmount, setStakeAmount] = useState<number>(1);
   const [selectedToken, setSelectedToken] = useState<"gods" | "soul">("gods");
@@ -82,12 +126,107 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
 
   const info = nodeTypeInfo[nodeType];
 
-  // Pulse effect when stats change
+  // Use wagmi hooks for wallet connection and balances
+  const { address, isConnected } = useAccount();
+
+  // Get GODS token balance
+  const { data: godsBalance, refetch: refetchGodsBalance } = useReadContract({
+    address: godsTokenAddress as `0x${string}`,
+    abi: erc20ABI,
+    functionName: "balanceOf",
+    args: [address || "0x0000000000000000000000000000000000000000"],
+  });
+
+  // Get SOUL token balance
+  const { data: soulBalance, refetch: refetchSoulBalance } = useReadContract({
+    address: soulTokenAddress as `0x${string}`,
+    abi: erc20ABI,
+    functionName: "balanceOf",
+    args: [address || "0x0000000000000000000000000000000000000000"],
+  });
+
+  // Watch for Transfer events involving the current user for GODS token
+  useWatchContractEvent({
+    address: godsTokenAddress as `0x${string}`,
+    abi: erc20ABI,
+    eventName: "Transfer",
+    args: [undefined, address],
+    onLogs() {
+      // Refresh GODS balance when tokens are sent to user
+      refetchGodsBalance();
+    },
+    enabled: isConnected && !!address && !!godsTokenAddress,
+  });
+
+  // Watch for Transfer events from the user for GODS token (for staking)
+  useWatchContractEvent({
+    address: godsTokenAddress as `0x${string}`,
+    abi: erc20ABI,
+    eventName: "Transfer",
+    args: [address, undefined],
+    onLogs() {
+      // Refresh GODS balance when user sends tokens
+      refetchGodsBalance();
+    },
+    enabled: isConnected && !!address && !!godsTokenAddress,
+  });
+
+  // Watch for Transfer events involving the current user for SOUL token
+  useWatchContractEvent({
+    address: soulTokenAddress as `0x${string}`,
+    abi: erc20ABI,
+    eventName: "Transfer",
+    args: [undefined, address],
+    onLogs() {
+      // Refresh SOUL balance when tokens are sent to user
+      refetchSoulBalance();
+    },
+    enabled: isConnected && !!address && !!soulTokenAddress,
+  });
+
+  // Watch for Transfer events from the user for SOUL token (for staking)
+  useWatchContractEvent({
+    address: soulTokenAddress as `0x${string}`,
+    abi: erc20ABI,
+    eventName: "Transfer",
+    args: [address, undefined],
+    onLogs() {
+      // Refresh SOUL balance when user sends tokens
+      refetchSoulBalance();
+    },
+    enabled: isConnected && !!address && !!soulTokenAddress,
+  });
+
+  // Convert token balances from wei to ether (formatted values)
+  const formattedGodsBalance = godsBalance
+    ? parseFloat(Number(godsBalance) / 10 ** 18 + "")
+    : 0;
+
+  const formattedSoulBalance = soulBalance
+    ? parseFloat(Number(soulBalance) / 10 ** 18 + "")
+    : 0;
+
+  // Manually refresh balances (can be used after transactions)
+  const refreshBalances = () => {
+    if (isConnected) {
+      refetchGodsBalance();
+      refetchSoulBalance();
+    }
+  };
+
+  // Effect to trigger pulse when stats change
   useEffect(() => {
     setPulseEffect(true);
     const timer = setTimeout(() => setPulseEffect(false), 2000);
     return () => clearTimeout(timer);
   }, [nodeStats]);
+
+  // Effect to refresh balances when component mounts or address changes
+  useEffect(() => {
+    if (isConnected && address) {
+      refreshBalances();
+    }
+  }, [isConnected, address]);
 
   // Calculate stat percentage for display
   const calculateStatPercentage = (value: number) => {
@@ -99,8 +238,23 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
     return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
   };
 
+  // Get available token balance based on selection
+  const getAvailableBalance = (tokenType: "gods" | "soul") => {
+    if (!isConnected) return 0;
+    return tokenType === "gods" ? formattedGodsBalance : formattedSoulBalance;
+  };
+
   // Handle staking with WebSocket integration
   const handleStake = () => {
+    if (!isConnected) return;
+
+    // Check if user has enough balance
+    const availableBalance = getAvailableBalance(selectedToken);
+    if (availableBalance < stakeAmount) {
+      alert(`Insufficient ${selectedToken.toUpperCase()} balance`);
+      return;
+    }
+
     // Local state update
     onStake(selectedToken, stakeAmount);
 
@@ -110,21 +264,29 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
       tokenType: selectedToken,
       amount: stakeAmount,
     });
+
+    // Refresh balances after staking action
+    setTimeout(refreshBalances, 2000); // Short delay to allow transaction to complete
   };
 
   // Handle unstaking with WebSocket integration
   const handleUnstake = () => {
+    if (!isConnected) return;
+
     // Only unstake if we have tokens staked
     if (stakedTokens[selectedToken] >= stakeAmount) {
       // Local state update
       onUnstake(selectedToken, stakeAmount);
 
       // Send to backend for synchronization with the game
-      sendUIAction("stake_tokens", {
+      sendUIAction("unstake_tokens", {
         nodeId,
         tokenType: selectedToken,
-        amount: -stakeAmount, // Negative amount for unstaking
+        amount: stakeAmount,
       });
+
+      // Refresh balances after unstaking action
+      setTimeout(refreshBalances, 2000); // Short delay to allow transaction to complete
     }
   };
 
@@ -285,14 +447,16 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                     selectedToken === "gods" ? `text-${info.color}-400` : ""
                   }
                 >
-                  $GODS: {formatNumber(100 - stakedTokens.gods)}
+                  $GODS:{" "}
+                  {isConnected ? formatNumber(formattedGodsBalance) : "0"}
                 </span>
                 <span
                   className={
                     selectedToken === "soul" ? `text-${info.color}-400` : ""
                   }
                 >
-                  $SOUL: {formatNumber(100 - stakedTokens.soul)}
+                  $SOUL:{" "}
+                  {isConnected ? formatNumber(formattedSoulBalance) : "0"}
                 </span>
               </div>
             </div>
@@ -339,21 +503,35 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
               <Slider
                 value={[stakeAmount]}
                 min={1}
-                max={Math.min(
-                  50,
-                  selectedToken === "gods"
-                    ? 100 - stakedTokens.gods
-                    : 100 - stakedTokens.soul
+                max={Math.max(
+                  1,
+                  Math.min(50, getAvailableBalance(selectedToken))
                 )}
                 step={1}
                 onValueChange={(value) => setStakeAmount(value[0])}
                 className="my-3"
+                disabled={
+                  !isConnected || getAvailableBalance(selectedToken) === 0
+                }
               />
 
-              <CyberpunkNeonButton className="w-full" onClick={handleStake}>
+              <CyberpunkNeonButton
+                className="w-full"
+                onClick={handleStake}
+                disabled={
+                  !isConnected ||
+                  getAvailableBalance(selectedToken) < stakeAmount
+                }
+              >
                 <Plus className="mr-1 h-4 w-4" /> Stake {stakeAmount} $
                 {selectedToken.toUpperCase()}
               </CyberpunkNeonButton>
+
+              {!isConnected && (
+                <p className="text-xs text-center text-slate-400 mt-2">
+                  Connect wallet to stake tokens
+                </p>
+              )}
             </div>
           </TabsContent>
 
@@ -428,16 +606,26 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
                 step={1}
                 onValueChange={(value) => setStakeAmount(value[0])}
                 className="my-3"
+                disabled={!isConnected || stakedTokens[selectedToken] < 1}
               />
 
               <CyberpunkNeonButton
                 className="w-full"
                 variant="magenta"
                 onClick={handleUnstake}
+                disabled={
+                  !isConnected || stakedTokens[selectedToken] < stakeAmount
+                }
               >
                 <Minus className="mr-1 h-4 w-4" />
                 Unstake {stakeAmount} ${selectedToken.toUpperCase()}
               </CyberpunkNeonButton>
+
+              {!isConnected && (
+                <p className="text-xs text-center text-slate-400 mt-2">
+                  Connect wallet to unstake tokens
+                </p>
+              )}
             </div>
           </TabsContent>
         </Tabs>

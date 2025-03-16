@@ -2,14 +2,34 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Coins, Check, HeartCrack, Loader2, Skull, Trophy } from "lucide-react";
+import {
+  Coins,
+  Check,
+  HeartCrack,
+  Loader2,
+  Skull,
+  Trophy,
+  Wallet,
+} from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { CyberPanel } from "./cyberpunk/CyberPanel";
 import { chakra } from "@/lib/fonts";
 import FancyCyberpunkCard from "./cyberpunk/FancyCyberpunkCard";
 import useSocket from "@/lib/hooks/useSocket";
-import { useAccount } from "wagmi";
+import {
+  useAccount,
+  useContractRead,
+  useReadContract,
+  useWatchContractEvent,
+} from "wagmi";
 import { useTokenMinting } from "@/lib/hooks/useTokenMinting";
+import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface NodeType {
   count: number;
@@ -27,6 +47,39 @@ interface LiquidityPool {
   totalValue: number;
   aprEstimate: number;
 }
+
+// Minimal ERC20 ABI for balanceOf and Transfer event
+const erc20ABI = [
+  {
+    constant: true,
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        name: "from",
+        type: "address",
+      },
+      {
+        indexed: true,
+        name: "to",
+        type: "address",
+      },
+      {
+        indexed: false,
+        name: "value",
+        type: "uint256",
+      },
+    ],
+    name: "Transfer",
+    type: "event",
+  },
+];
 
 export function GameControlCard() {
   const [pool, setPool] = useState<LiquidityPool | null>(null);
@@ -54,6 +107,70 @@ export function GameControlCard() {
 
   const mainNodeHealth = getMainNodeHealth();
   const healthPercentage = Math.round(mainNodeHealth.healthPercentage * 100);
+
+  // Token contract addresses from environment variables
+  const godsTokenAddress =
+    process.env.NEXT_PUBLIC_GODS_TOKEN_ADDRESS ||
+    "0x0000000000000000000000000000000000000000";
+  const soulTokenAddress =
+    process.env.NEXT_PUBLIC_SOUL_TOKEN_ADDRESS ||
+    "0x0000000000000000000000000000000000000000";
+
+  // Get GODS token balance from wallet
+  const { data: godsBalance, refetch: refetchGodsBalance } = useReadContract({
+    address: godsTokenAddress as `0x${string}`,
+    abi: erc20ABI,
+    functionName: "balanceOf",
+    args: [address || "0x0000000000000000000000000000000000000000"],
+  });
+
+  // Get SOUL token balance from wallet
+  const { data: soulBalance, refetch: refetchSoulBalance } = useReadContract({
+    address: soulTokenAddress as `0x${string}`,
+    abi: erc20ABI,
+    functionName: "balanceOf",
+    args: [address || "0x0000000000000000000000000000000000000000"],
+  });
+
+  // Watch for Transfer events involving the user's wallet for GODS token
+  useWatchContractEvent({
+    address: godsTokenAddress as `0x${string}`,
+    abi: erc20ABI,
+    eventName: "Transfer",
+    args: [undefined, address],
+    onLogs() {
+      // Refresh GODS balance when user receives tokens
+      refetchGodsBalance();
+    },
+    enabled: isWalletConnected && !!address,
+  });
+
+  // Watch for Transfer events involving the user's wallet for SOUL token
+  useWatchContractEvent({
+    address: soulTokenAddress as `0x${string}`,
+    abi: erc20ABI,
+    eventName: "Transfer",
+    args: [undefined, address],
+    onLogs() {
+      // Refresh SOUL balance when user receives tokens
+      refetchSoulBalance();
+    },
+    enabled: isWalletConnected && !!address,
+  });
+
+  // Format token balances from wei to ether
+  const formattedGodsBalance = godsBalance
+    ? parseFloat(Number(godsBalance) / 10 ** 18 + "")
+    : 0;
+
+  const formattedSoulBalance = soulBalance
+    ? parseFloat(Number(soulBalance) / 10 ** 18 + "")
+    : 0;
+
+  // Format numbers for display
+  const formatNumber = (num: number) => {
+    return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  };
 
   useEffect(() => {
     if (!pool?.lastUpdated) return;
@@ -91,6 +208,17 @@ export function GameControlCard() {
       setNextWaveTimer("In Progress");
     }
   }, [waveInfo]);
+
+  // Effect to refresh balances when minting is successful
+  useEffect(() => {
+    if (isSuccess) {
+      // Refresh token balances after successful minting
+      setTimeout(() => {
+        refetchGodsBalance();
+        refetchSoulBalance();
+      }, 3000); // Give blockchain time to update
+    }
+  }, [isSuccess, refetchGodsBalance, refetchSoulBalance]);
 
   // Function to fetch data
   const fetchPoolData = async () => {
@@ -249,26 +377,80 @@ export function GameControlCard() {
         </div>
         <span className="text-muted-foreground">Wave:</span>{" "}
         <span className="font-bold">{waveInfo.currentWave}</span>
-        {/* Stats section */}
-        <div className="grid grid-cols-2 gap-2 mt-4">
-          <div className="flex items-center p-2 bg-primary/5 rounded-lg border border-primary/20">
-            <Coins className="h-5 w-5 text-amber-500 mr-2" />
-            <div>
-              <p className="text-xs text-muted-foreground">Currency ($SOUL)</p>
-              <p className="text-sm font-bold">{gameStats.currency}</p>
-            </div>
-          </div>
-          <div className="flex items-center p-2 bg-primary/5 rounded-lg border border-primary/20">
-            <Skull className="h-5 w-5 text-rose-500 mr-2" />
-            <div>
+        {/* Wallet balances section */}
+        <div className="mb-2 mt-4">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-sm font-medium">Wallet Balance</p>
+            {!isWalletConnected && (
               <p className="text-xs text-muted-foreground">
-                Enemies Killed ($GODS)
+                Connect wallet to view
               </p>
-              <p className="text-sm font-bold">{gameStats.enemiesKilled}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center p-2 bg-primary/5 rounded-lg border border-primary/20">
+              <Wallet className="h-5 w-5 text-indigo-400 mr-2" />
+              <div>
+                <p className="text-xs text-muted-foreground">$SOUL</p>
+                <p className="text-sm font-bold">
+                  {isWalletConnected ? formatNumber(formattedSoulBalance) : "—"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center p-2 bg-primary/5 rounded-lg border border-primary/20">
+              <Wallet className="h-5 w-5 text-indigo-400 mr-2" />
+              <div>
+                <p className="text-xs text-muted-foreground">$GODS</p>
+                <p className="text-sm font-bold">
+                  {isWalletConnected ? formatNumber(formattedGodsBalance) : "—"}
+                </p>
+              </div>
             </div>
           </div>
         </div>
-        {/* Stats end */}
+        <Separator className="my-3 bg-slate-700/50" />
+        {/* Game earnings section */}
+        <div className="mb-2">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-sm font-medium">Game Earnings</p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <p className="text-xs text-muted-foreground cursor-help">
+                    Available to mint
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">
+                    Mint tokens to add them to your wallet
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center p-2 bg-primary/5 rounded-lg border border-primary/20">
+              <Coins className="h-5 w-5 text-amber-500 mr-2" />
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Currency ($SOUL)
+                </p>
+                <p className="text-sm font-bold">{gameStats.currency}</p>
+              </div>
+            </div>
+            <div className="flex items-center p-2 bg-primary/5 rounded-lg border border-primary/20">
+              <Skull className="h-5 w-5 text-rose-500 mr-2" />
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Enemies Killed ($GODS)
+                </p>
+                <p className="text-sm font-bold">{gameStats.enemiesKilled}</p>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* Token minting section - only show during wave countdown */}
         {waveInfo.isCountingDown && (
           <div className="my-4 p-3 border border-indigo-500 rounded-lg bg-indigo-500/10 relative overflow-hidden">
@@ -289,14 +471,23 @@ export function GameControlCard() {
                     View transaction
                   </a>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 text-xs border-emerald-300 text-emerald-300 hover:bg-emerald-800/50"
-                  onClick={reset}
-                >
-                  Continue Playing
-                </Button>
+                <div className="text-center mt-2">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>New Balance:</span>
+                    <span className="font-medium">
+                      $SOUL: {formatNumber(formattedSoulBalance)} | $GODS:{" "}
+                      {formatNumber(formattedGodsBalance)}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 text-xs border-emerald-300 text-emerald-300 hover:bg-emerald-800/50"
+                    onClick={reset}
+                  >
+                    Continue Playing
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -310,19 +501,49 @@ export function GameControlCard() {
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex items-center p-2 bg-primary/5 rounded-lg border border-primary/20">
                   <div>
-                    <p className="text-xs text-muted-foreground">$SOUL</p>
+                    <p className="text-xs text-muted-foreground">
+                      $SOUL to mint
+                    </p>
                     <p className="text-sm font-bold">{gameStats.currency}</p>
                   </div>
                 </div>
                 <div className="flex items-center p-2 bg-primary/5 rounded-lg border border-primary/20">
                   <div>
-                    <p className="text-xs text-muted-foreground">$GODS</p>
+                    <p className="text-xs text-muted-foreground">
+                      $GODS to mint
+                    </p>
                     <p className="text-sm font-bold">
                       {gameStats.enemiesKilled}
                     </p>
                   </div>
                 </div>
               </div>
+
+              {isWalletConnected && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="flex items-center p-2 bg-indigo-900/20 rounded-lg border border-indigo-600/30">
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Current $SOUL
+                      </p>
+                      <p className="text-sm font-bold">
+                        {formatNumber(formattedSoulBalance)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center p-2 bg-indigo-900/20 rounded-lg border border-indigo-600/30">
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Current $GODS
+                      </p>
+                      <p className="text-sm font-bold">
+                        {formatNumber(formattedGodsBalance)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <Button
                 onClick={handleMintTokens}
                 disabled={
