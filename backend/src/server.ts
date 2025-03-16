@@ -1,7 +1,9 @@
 import { WebSocket, WebSocketServer } from "ws";
+import { ethers } from "ethers";
 import express from "express";
 import cors from "cors";
 import http from "http";
+import dotenv from "dotenv";
 import {
   ActionConfirmedMessage,
   ClientMessage,
@@ -11,6 +13,10 @@ import {
   NodeStatsData,
 } from "./types";
 
+import { abi as TokenDistributorABI } from "./lib/contracts/TokenDistributor.sol/TokenDistributor.json";
+
+dotenv.config();
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -18,6 +24,18 @@ app.use(express.json());
 const PORT = 4000;
 const HTTP_PORT = 3000;
 const DEDUPLICATION_WINDOW_MS = 1000; // 1 second window for deduplication
+
+const TOKEN_DISTRIBUTOR_ADDRESS = process.env.TOKEN_DISTRIBUTOR_ADDRESS;
+const PRIVATE_KEY = process.env.DISTRIBUTOR_PRIVATE_KEY;
+const RPC_URL = process.env.SCROLL_RPC_URL || "https://sepolia-rpc.scroll.io/";
+
+const provider = new ethers.JsonRpcProvider(RPC_URL);
+const wallet = new ethers.Wallet(PRIVATE_KEY || "", provider);
+const distributorContract = new ethers.Contract(
+  TOKEN_DISTRIBUTOR_ADDRESS || "",
+  TokenDistributorABI,
+  wallet
+);
 
 const gameState: GameState = {
   totalNodesPlaced: 0,
@@ -901,6 +919,58 @@ app.get("/api/game-state", (req, res) => {
   });
 });
 
+app.post("/api/mint-tokens", async (req, res) => {
+  try {
+    const { address, soulAmount, godsAmount } = req.body;
+
+    // Validate the input
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid wallet address",
+      });
+    }
+
+    if (soulAmount < 0 || godsAmount < 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Token amounts must be non-negative",
+      });
+    }
+
+    console.log(
+      `Minting ${soulAmount} SOUL and ${godsAmount} GODS for ${address}`
+    );
+
+    // Convert token amounts to wei
+    const soulAmountWei = ethers.parseUnits(soulAmount.toString(), 18);
+    const godsAmountWei = ethers.parseUnits(godsAmount.toString(), 18);
+
+    // Call the contract function to mint tokens
+    const tx = await distributorContract.authorizedMint(
+      address,
+      soulAmountWei,
+      godsAmountWei
+    );
+
+    // Wait for the transaction to be mined
+    const receipt = await tx.wait();
+
+    // Return success response
+    return res.json({
+      success: true,
+      transactionHash: tx.hash,
+      blockNumber: receipt.blockNumber,
+    });
+  } catch (error: any) {
+    console.error("Error minting tokens:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to mint tokens",
+      details: error.message,
+    });
+  }
+});
 // Start server
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

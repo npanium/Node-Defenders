@@ -1,76 +1,116 @@
-# Dual Token System
+# Dual Token System Smart Contracts
 
-A prototype system for minting two different ERC20 tokens ($SOUL and $GODS) to users based on their eligibility.
+This repository contains the smart contracts for a dual token system consisting of SOUL and GODS tokens, with a TokenDistributor contract for managing token minting and distribution.
 
-## Overview
+## Contracts Overview
 
-This system enables users to mint variable amounts of two different tokens. The amounts are determined by the backend and can be minted either directly by users or through an authorized backend.
+### SoulToken.sol
 
-## Components
+A standard ERC20 token with minting functionality, controlled by the owner.
 
-### Smart Contracts
+- Symbol: SOUL
+- Decimals: 18 (default for ERC20)
+- Minting: Restricted to the contract owner
 
-- **SoulToken**: ERC20 token implementing the $SOUL token
-- **GodsToken**: ERC20 token implementing the $GODS token
-- **TokenDistributor**: Central contract that handles minting of both tokens
+### GodsToken.sol
 
-### Frontend
+A standard ERC20 token with minting functionality, controlled by the owner.
 
-- Connects to user wallet
-- Displays token amounts eligible for minting
-- Provides interface for minting tokens
-- Unity integration for gameplay
+- Symbol: GODS
+- Decimals: 18 (default for ERC20)
+- Minting: Restricted to the contract owner
 
-### Backend
+### TokenDistributor.sol
 
-- Determines token eligibility amounts
-- Optional: Handles authorized minting to save users gas fees
+A central distribution contract that can mint both SOUL and GODS tokens.
 
-## Quick Start
+- Controls minting of both tokens once ownership is transferred
+- Optional mint fee mechanism included
+- Owner-only authorized minting function
+- Public minting function with optional fee
 
-1. Deploy smart contracts to Scroll network
+## Deployment Flow
 
-   ```
-   npx hardhat run scripts/deploy.js --network scroll
-   ```
+1. Deploy SoulToken with your address as the `initialOwner`
+2. Deploy GodsToken with your address as the `initialOwner`
+3. Deploy TokenDistributor with the addresses of the deployed SoulToken and GodsToken contracts
+4. Transfer ownership of both SoulToken and GodsToken to the TokenDistributor address
+5. Now the TokenDistributor can mint tokens for users
 
-2. Set up your environment variables
+## Critical Step: Ownership Transfer
 
-   ```
-   DISTRIBUTOR_ADDRESS=0x...
-   SOUL_TOKEN_ADDRESS=0x...
-   GODS_TOKEN_ADDRESS=0x...
-   PRIVATE_KEY=0x... (for backend only)
-   RPC_URL=https://...
-   ```
+⚠️ **IMPORTANT**: Before the TokenDistributor can mint any tokens, you MUST transfer ownership of both token contracts to the TokenDistributor contract.
 
-3. Start the backend
+The `mint` functions on both SoulToken and GodsToken have the `onlyOwner` modifier, meaning only the contract owner can call them. If you don't transfer ownership to the TokenDistributor, any calls to `mintTokens` or `authorizedMint` will revert.
 
-   ```
-   npm run start:server
-   ```
+### Steps to Transfer Ownership:
 
-4. Run the frontend
-   ```
-   npm run dev
-   ```
+1. After deploying all contracts, call the `transferOwnership` function on both SoulToken and GodsToken
+2. Use the address of your deployed TokenDistributor as the new owner
 
-## Minting Flow
+```solidity
+// Example of transferring ownership
+soulToken.transferOwnership(tokenDistributorAddress);
+godsToken.transferOwnership(tokenDistributorAddress);
+```
 
-1. User connects wallet
-2. Backend determines token amounts based on gameplay/eligibility
-3. User initiates minting through the UI
-4. Tokens are minted directly to the user's wallet
+## Deployment Instructions
 
-## Development Notes
+### Using Remix
 
-- This is a prototype implementation
-- For production, add additional security measures:
-  - Rate limiting
-  - Signature verification
-  - Event logging
-  - Access controls
+1. Load all three contract files into Remix
+2. Compile each contract
+3. Deploy in the following order:
+   - Deploy SoulToken (provide your address as initialOwner)
+   - Deploy GodsToken (provide your address as initialOwner)
+   - Deploy TokenDistributor (provide the addresses of the deployed token contracts)
+4. Transfer ownership:
+   - Select SoulToken in Remix, call `transferOwnership` with TokenDistributor's address
+   - Select GodsToken in Remix, call `transferOwnership` with TokenDistributor's address
+5. Now you can use the TokenDistributor to mint tokens
+
+### Using Hardhat or Truffle
+
+Similar deployment scripts can be created for Hardhat or Truffle. Ensure you follow the same sequence: deploy tokens, deploy distributor, transfer ownership.
+
+## Using the TokenDistributor
+
+### For Owners
+
+As the owner of the TokenDistributor, you can:
+
+- Call `authorizedMint(recipient, soulAmount, godsAmount)` to mint specific amounts of both tokens to a recipient
+- Call `setMintFee(newFee)` to set a fee for public minting
+- Call `withdraw()` to withdraw any ETH collected from mint fees
+
+### For Users
+
+Users can:
+
+- Call `mintTokens(recipient, soulAmount, godsAmount)` to mint tokens
+- Pay the required fee (if set by the owner)
+
+## Contract Compatibility
+
+- Solidity Version: ^0.8.22
+- OpenZeppelin Contracts: v5.0.0 compatible
+- EVM Compatible: These contracts can be deployed on any EVM-compatible chain including Ethereum Mainnet, Sepolia, Scroll, Arbitrum, etc.
+
+## Testing
+
+Before deploying to mainnet, it's recommended to:
+
+1. Test on Sepolia or another testnet
+2. Verify all contracts on Etherscan (or the equivalent block explorer)
+3. Test the full token minting flow including ownership transfer
+
+## Gas Optimization
+
+These contracts are optimized for clarity rather than gas efficiency. For high-volume applications, consider:
+
+- Removing optional features like `hasMinted` tracking if not needed
+- Optimizing the mint functions for batch processing
 
 ## License
 
-MIT
+These contracts are under the MIT License.
