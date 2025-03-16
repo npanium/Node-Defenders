@@ -12,9 +12,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-// Generate a random ID for nodes
-const generateId = () => Math.random().toString(36).substring(2, 10);
-
 // Initial node stats
 const getInitialNodeStats = (type: NodeType) => {
   switch (type) {

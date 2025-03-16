@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { CyberPanel } from "./cyberpunk/CyberPanel";
 import { chakra } from "@/lib/fonts";
 import FancyCyberpunkCard from "./cyberpunk/FancyCyberpunkCard";
-import useSocket from "@/lib/hooks/useSocket"; // Import our socket hook
+import useSocket from "@/lib/hooks/useSocket";
 
 interface NodeType {
   count: number;
@@ -73,33 +73,6 @@ export function GameControlCard() {
 
     return () => clearInterval(interval);
   }, [pool?.lastUpdated]);
-
-  // Calculate next wave countdown
-  // useEffect(() => {
-  //   if (pool?.nextWaveCountdown === undefined) return;
-
-  //   const updateWaveCountdown = () => {
-  //     let countdown = Math.max(0, pool.nextWaveCountdown - 1);
-
-  //     // Check for Yield Frenzy (every 5 waves)
-  //     if (pool.currentWave > 0 && pool.currentWave % 5 === 0) {
-  //       setIsYieldFrenzy(true);
-  //     } else {
-  //       setIsYieldFrenzy(false);
-  //     }
-
-  //     const minutes = Math.floor(countdown / 60);
-  //     const seconds = countdown % 60;
-  //     // setNextWaveTimer(`${minutes}:${seconds.toString().padStart(2, "0")}`);
-
-  //     setPool((prev) =>
-  //       prev ? { ...prev, nextWaveCountdown: countdown } : null
-  //     );
-  //   };
-
-  //   const interval = setInterval(updateWaveCountdown, 1000);
-  //   return () => clearInterval(interval);
-  // }, [pool?.nextWaveCountdown, pool?.currentWave]);
 
   useEffect(() => {
     if (waveInfo.isCountingDown) {
