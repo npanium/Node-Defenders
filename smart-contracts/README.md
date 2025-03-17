@@ -1,6 +1,6 @@
 # Dual Token System Smart Contracts
 
-This repository contains the smart contracts for a dual token system consisting of SOUL and GODS tokens, with a TokenDistributor contract for managing token minting and distribution.
+This repository contains the smart contracts for a dual token system consisting of SOUL and GODS tokens, with a TokenDistributor contract for managing token minting and distribution, and a NodeStaking contract for staking functionality.
 
 ## Contracts Overview
 
@@ -29,13 +29,24 @@ A central distribution contract that can mint both SOUL and GODS tokens.
 - Owner-only authorized minting function
 - Public minting function with optional fee
 
+### NodeStaking.sol
+
+A staking contract that allows users to stake GODS and SOUL tokens on specific nodes.
+
+- Users can stake GODS and SOUL tokens on specific nodes
+- Rewards are calculated based on Block Percentage Yield (BPY)
+- Users can unstake tokens and claim rewards
+- Owner can update reward rates and blocks per day parameter
+
 ## Deployment Flow
 
 1. Deploy SoulToken with your address as the `initialOwner`
 2. Deploy GodsToken with your address as the `initialOwner`
 3. Deploy TokenDistributor with the addresses of the deployed SoulToken and GodsToken contracts
-4. Transfer ownership of both SoulToken and GodsToken to the TokenDistributor address
-5. Now the TokenDistributor can mint tokens for users
+4. Deploy NodeStaking with the addresses of the deployed SoulToken and GodsToken contracts
+5. Transfer ownership of both SoulToken and GodsToken to the TokenDistributor address
+6. **Fund the NodeStaking contract with both GODS and SOUL tokens for reward payments**
+7. Now the TokenDistributor can mint tokens for users and the NodeStaking contract can handle staking operations
 
 ## Critical Step: Ownership Transfer
 
@@ -54,24 +65,46 @@ soulToken.transferOwnership(tokenDistributorAddress);
 godsToken.transferOwnership(tokenDistributorAddress);
 ```
 
+## Critical Step: Funding the Staking Contract
+
+⚠️ **IMPORTANT**: The NodeStaking contract must hold a sufficient balance of both GODS and SOUL tokens to pay out rewards to stakers. Without this balance, reward claiming transactions will revert.
+
+### Steps to Fund the Staking Contract:
+
+1. After deploying all contracts and minting tokens, transfer an adequate amount of both tokens to the NodeStaking contract address
+2. This can be done through the TokenDistributor's `authorizedMint` function or through regular ERC20 `transfer` calls
+
+```solidity
+// Example of minting tokens directly to the staking contract
+tokenDistributor.authorizedMint(nodeStakingAddress, soulAmount, godsAmount);
+
+// Alternative: transfer existing tokens
+godsToken.transfer(nodeStakingAddress, godsAmount);
+soulToken.transfer(nodeStakingAddress, soulAmount);
+```
+
 ## Deployment Instructions
 
 ### Using Remix
 
-1. Load all three contract files into Remix
+1. Load all contract files into Remix
 2. Compile each contract
 3. Deploy in the following order:
    - Deploy SoulToken (provide your address as initialOwner)
    - Deploy GodsToken (provide your address as initialOwner)
    - Deploy TokenDistributor (provide the addresses of the deployed token contracts)
+   - Deploy NodeStaking (provide the addresses of the deployed token contracts)
 4. Transfer ownership:
    - Select SoulToken in Remix, call `transferOwnership` with TokenDistributor's address
    - Select GodsToken in Remix, call `transferOwnership` with TokenDistributor's address
-5. Now you can use the TokenDistributor to mint tokens
+5. Fund the NodeStaking contract with tokens:
+   - Use TokenDistributor to mint tokens directly to the NodeStaking contract, or
+   - Transfer existing tokens to the NodeStaking contract address
+6. Now you can use the TokenDistributor to mint tokens and the NodeStaking contract for staking operations
 
 ### Using Hardhat or Truffle
 
-Similar deployment scripts can be created for Hardhat or Truffle. Ensure you follow the same sequence: deploy tokens, deploy distributor, transfer ownership.
+Similar deployment scripts can be created for Hardhat or Truffle. Ensure you follow the same sequence: deploy tokens, deploy distributor and staking contracts, transfer ownership, fund the staking contract.
 
 ## Using the TokenDistributor
 
@@ -90,9 +123,29 @@ Users can:
 - Call `mintTokens(recipient, soulAmount, godsAmount)` to mint tokens
 - Pay the required fee (if set by the owner)
 
+## Using the NodeStaking Contract
+
+### For Owners
+
+As the owner of the NodeStaking contract, you can:
+
+- Call `updateRewardRates(godsRewardRate, soulRewardRate)` to adjust the reward rates
+- Call `updateBlocksPerDay(blocksPerDay)` to adjust the blocks per day parameter used in reward calculations
+- Call `emergencyWithdraw(tokenAddress, amount)` to withdraw tokens in case of an emergency
+
+### For Users
+
+Users can:
+
+- Call `stake(nodeId, isGods, amount)` to stake tokens on a specific node
+- Call `unstake(nodeId, isGods, amount)` to unstake tokens and receive rewards
+- Call `claimRewards(nodeId, isGods)` to claim rewards without unstaking
+- Call `getPendingRewards(nodeId, isGods)` to check pending rewards
+- Call `getNodeStakeInfo(nodeId, userAddress)` to get detailed staking information
+
 ## Contract Compatibility
 
-- Solidity Version: ^0.8.22
+- Solidity Version: ^0.8.20
 - OpenZeppelin Contracts: v5.0.0 compatible
 - EVM Compatible: These contracts can be deployed on any EVM-compatible chain including Ethereum Mainnet, Sepolia, Scroll, Arbitrum, etc.
 
@@ -103,6 +156,7 @@ Before deploying to mainnet, it's recommended to:
 1. Test on Sepolia or another testnet
 2. Verify all contracts on Etherscan (or the equivalent block explorer)
 3. Test the full token minting flow including ownership transfer
+4. Test the staking and reward mechanisms with different parameters
 
 ## Gas Optimization
 

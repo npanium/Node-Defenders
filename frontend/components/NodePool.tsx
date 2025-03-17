@@ -199,26 +199,15 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
     isPending: isApproveGodsPending,
     isError: isApproveGodsError,
     error: approveGodsError,
-  } = useWriteContract({
-    onSuccess: (data) => {
-      console.log("Approval successful:", data);
-      // This is where you would get your hash
-      refetchGodsAllowance();
-      setIsApproving(false);
-    },
-    onError: (error) => {
-      console.error("Approval error:", error);
-      setIsApproving(false);
-    },
-  });
+  } = useWriteContract();
 
-  const { writeContract: approveSoul } = useWriteContract();
+  const { writeContractAsync: approveSoul } = useWriteContract();
 
-  const { writeContract: stakeTokens } = useWriteContract();
+  const { writeContractAsync: stakeTokens } = useWriteContract();
 
-  const { writeContract: unstakeTokens } = useWriteContract();
+  const { writeContractAsync: unstakeTokens } = useWriteContract();
 
-  const { writeContract: claimRewards } = useWriteContract();
+  const { writeContractAsync: claimRewards } = useWriteContract();
 
   // Watch for Transfer events involving the current user for GODS token
   useWatchContractEvent({
@@ -433,8 +422,6 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
       if (selectedToken === "gods") {
         console.log("[handleApprove] GODS");
 
-        // This is where the error happens - you're trying to await the hash instead
-        // of waiting for the transaction to complete
         const result = await approveGods({
           address: godsTokenAddress as `0x${string}`,
           abi: erc20ABI,
@@ -444,7 +431,6 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
 
         console.log("[handleApprove] transaction hash:", result);
       } else {
-        // Similar change needed here
         const result = await approveSoul({
           address: soulTokenAddress as `0x${string}`,
           abi: erc20ABI,
@@ -491,13 +477,13 @@ export const NodePool: React.FC<NodePoolCardProps> = ({
 
       console.log("[handleStake] noddeId: ", nodeId);
       // Call the contract's stake function
-      await stakeTokens({
+      const result = await stakeTokens({
         address: nodeStakingAddress as `0x${string}`,
         abi: NodeStakingABI,
         functionName: "stake",
         args: [nodeId, isGods, amountInWei],
       });
-
+      console.log("[handleStake] transaction hash:", result);
       // Local state update (for UI responsiveness)
       onStake(selectedToken, stakeAmount);
 
