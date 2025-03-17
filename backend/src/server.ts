@@ -27,7 +27,8 @@ const DEDUPLICATION_WINDOW_MS = 1000; // 1 second window for deduplication
 
 const TOKEN_DISTRIBUTOR_ADDRESS = process.env.TOKEN_DISTRIBUTOR_ADDRESS;
 const PRIVATE_KEY = process.env.DISTRIBUTOR_PRIVATE_KEY;
-const RPC_URL = process.env.SCROLL_RPC_URL || "https://sepolia-rpc.scroll.io/";
+const RPC_URL =
+  process.env.SCROLL_RPC_URL || "https://scroll-sepolia.chainstacklabs.com";
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY || "", provider);
