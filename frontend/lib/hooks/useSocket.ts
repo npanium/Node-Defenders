@@ -110,7 +110,7 @@ export default function useSocket(gameId: string = "player1") {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("WebSocket message received:", data);
+        // console.log("WebSocket message received:", data);
         handleWebSocketMessage(data);
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
@@ -284,7 +284,7 @@ export default function useSocket(gameId: string = "player1") {
 
       case "enemy_destroyed":
         // Update game stats from enemy destroyed events
-        console.log("Enemy destroyed");
+        // console.log("Enemy destroyed");
         setGameStats((prev) => ({
           currency: data.currency !== undefined ? data.currency : prev.currency,
           enemiesKilled:
@@ -441,7 +441,7 @@ export default function useSocket(gameId: string = "player1") {
           payload,
         };
         sendMessage(message);
-        console.log(`Sent UI action ${action}:`, payload);
+        // console.log(`Sent UI action ${action}:`, payload);
       } else {
         console.warn("Cannot send UI action: WebSocket not connected");
       }

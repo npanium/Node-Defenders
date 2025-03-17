@@ -47,7 +47,7 @@ const GridCell: React.FC<GridCellProps> = ({
 
 const DOMRenderer: React.FC = () => {
   const { gameState, placeTower } = useGameEngine();
-  console.log(`Game state`, gameState);
+  // console.log(`Game state`, gameState);
   const [selectedTowerType, setSelectedTowerType] =
     useState<Tower["type"]>("validator");
 

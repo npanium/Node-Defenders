@@ -142,7 +142,7 @@ export class GameEngine {
 
   private notifySubscribers(): void {
     const state = this.getState();
-    console.log("Notifying subscribers with state:", state); // Debug log
+    // console.log("Notifying subscribers with state:", state); // Debug log
     this.subscribers.forEach((callback) => callback(state));
   }
 }

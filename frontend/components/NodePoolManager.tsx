@@ -299,6 +299,10 @@ const NodePoolManager: React.FC = () => {
                   <AccordionContent className="p-2">
                     <div className="relative">
                       <NodePool
+                        nodeStakingAddress={
+                          process.env.NEXT_PUBLIC_NODE_STAKING_ADDRESS ||
+                          "0x0000000000000000000000000000000000000000"
+                        }
                         godsTokenAddress={
                           process.env.NEXT_PUBLIC_GODS_TOKEN_ADDRESS ||
                           "0x0000000000000000000000000000000000000000"

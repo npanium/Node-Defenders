@@ -16,12 +16,7 @@ import { CyberPanel } from "./cyberpunk/CyberPanel";
 import { chakra } from "@/lib/fonts";
 import FancyCyberpunkCard from "./cyberpunk/FancyCyberpunkCard";
 import useSocket from "@/lib/hooks/useSocket";
-import {
-  useAccount,
-  useContractRead,
-  useReadContract,
-  useWatchContractEvent,
-} from "wagmi";
+import { useAccount, useReadContract, useWatchContractEvent } from "wagmi";
 import { useTokenMinting } from "@/lib/hooks/useTokenMinting";
 import { Separator } from "@/components/ui/separator";
 import {
